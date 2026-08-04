@@ -1,10 +1,6 @@
-# References {#sec:references}
+# References
 
-Bibliography lives in [`manuscript/references.bib`](references.bib) and is read by Pandoc during PDF render. The build pipeline invokes Pandoc with `--natbib`, so every `[@key]` citation in the manuscript is rewritten to the appropriate `\cite{}`/`\citep{}`/`\citet{}` LaTeX command and resolved against the bib file.
-
-To validate that `references.bib` is syntactically clean and contains the required fields per entry type:
-
-```bash
-uv run python -m infrastructure.reference.citation.cli validate \
-    projects/working/bond/you_only_live_twice/manuscript/references.bib --strict
-```
+1. Vallado, D. A. *Fundamentals of Astrodynamics and Applications.* 4th ed., Microcosm Press, 2013.
+2. Wertz, J. R., Everett, D. F., and Puschell, J. J. (eds.). *Space Mission Engineering: The New SMAD.* Microcosm Press, 2011.
+3. Hughes, G. F. "On the mean accuracy of statistical pattern recognizers." *IEEE Transactions on Information Theory*, 1968.
+4. Waltz, E. and Llinas, J. *Multisensor Data Fusion.* Artech House, 1990.

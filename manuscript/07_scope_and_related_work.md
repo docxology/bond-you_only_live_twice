@@ -1,24 +1,47 @@
-# Scope, Related Work, and Positioning {#sec:scope}
+# Scope and Related Work
 
-This section situates the exemplar scientifically and states explicit boundaries. The goal is not to compete with monographs on nonlinear programming [@nocedal2006numerical; @bertsekas1999nonlinear], but to show how a minimal, test-backed optimization story fits the template's reproducibility and rendering stack [@peng2011reproducible].
+## Scope
 
-## Classical gradient methods
+The VOLCANO package covers three special-agent analytical capabilities over a
+single fixed scenario. Its scope is deliberately bounded:
 
-Smooth unconstrained minimization via first-order updates has a long lineage, from Cauchy's early descent perspective [@cauchy1847methode] to modern treatments of convex problems [@boyd2004convex] and accelerated gradient schemes [@nesterov2013gradient]. Polyak's classical discussion of gradient convergence factors remains relevant when interpreting empirical iteration counts [@polyak1964some]. The present manuscript restricts attention to **fixed-step** gradient descent on a **convex quadratic**, where rates reduce to scalar linear recurrences in the error ([@sec:results], [@eq:scalar_linear_update]).
+* **Orbital mechanics** assumes circular two-body orbits; eccentric,
+  perturbed, or multi-body motion (J2, drag, third-body) is out of scope.
+  Window finding is a deterministic grid search, not an optimizer.
+* **Lair detection** scores a synthetic volcano-camouflage scene. It
+  demonstrates the anomaly-scoring *method* on real synthetic data; it is not a
+  claim about any real imagery.
+* **Pattern of life** uses a diurnal-rate Poisson model of activity. It
+  recovers the model's injected rhythm; it does not claim general time-series
+  universality.
 
-## Adaptive and stochastic extensions
+Nothing here is fielded operational software — it is a rigorous, reproducible
+exemplar of the underlying mathematics, in keeping with the BOND suite's
+research-exemplar contract.
 
-Practical machine-learning optimizers (e.g., Adam [@kingma2014adam]) introduce momentum, adaptive preconditioning, or noise from minibatching. Those methods are **out of scope** for `you_only_live_twice`: the exemplar deliberately keeps the algorithm minimal so that failures (divergent $\alpha$, iteration caps) are interpretable without confounding from stochastic sampling or line-search logic.
+## Related work
 
-## What this project proves about the template
+The methodology draws on established, citable foundations rather than novel
+claims:
 
-The scientific claims through [@sec:introduction], [@sec:methodology], and [@sec:results] are standard textbook material. The **non-standard** contribution is procedural: configuration in `manuscript/config.yaml` drives `run_convergence_experiment()`, figures, CSV exports, and `RESULT_*` token substitution (`scripts/z_generate_manuscript_variables.py`) so that PDF, HTML, and validation logs refer to the same numbers. That pattern is what downstream projects should copy—whether the domain is optimization, differential equations, or Bayesian workflows.
+* Orbital-element → ECI conversion, circular propagation, and the Hohmann
+  transfer follow Vallado's standard treatment of astrodynamics
+  [@vallado2013].
+* Rendezvous / proximity geometry and operational feasibility windows are
+  standard in human and robotic spaceflight mission design [@wertz2011].
+* Anomaly scoring by standardized residual against a smoothed background is the
+  classical approach to thermal and terrain change detection [@hughes1971].
+* Pattern-of-life / tempo analysis of activity point processes is the
+  mainstream approach in surveillance and operations research
+  [@waltz1998].
 
-## Explicit limitations
+The self-consistency guarantee — every manuscript number computed from a fixed
+seed and token-injected — follows the template's reproducible-research
+convention documented in the BOND suite.
 
-1. **Dimensionality**: Default experiments emphasize $d = 1$ with $A = I$ for transparent plotting; the benchmark figure explores $d > 1$ only with identity Hessians, so no ill-conditioning effects appear.
-2. **Step-size policy**: Only constant $\alpha$ is implemented in `src/optimizer.py`; there is no Wolfe or Armijo backtracking.
-3. **Global optimization**: Convexity is assumed; no basin-hopping or restarts are studied.
-4. **Numerical model**: Double-precision floating point only; no interval or arbitrary-precision analysis.
+## Limitations and future work
 
-These limitations are intentional: they narrow the failure surface so that infrastructure concerns—tests, logging, figure registration, and PDF cross-references—remain visible rather than buried under algorithmic complexity.
+Integration points for later BOND capabilities are recorded in `TODO.md`: a
+perturbation-aware propagator, a spline-refined window edge detector, and
+binding to the shared `bond-utilities` provenance helper once that dependency
+ships.

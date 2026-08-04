@@ -6,25 +6,19 @@
       "orcid": "0000-0001-6232-9096"
     }
   ],
-  "description": "Source code for Convergence Analysis of Gradient Descent Optimization (2026).",
+  "description": "PROJECT BOND film package for You Only Live Twice (1967), mission codename VOLCANO: deterministic orbital rendezvous / intercept window solving, concealed-lair detection via thermal and terrain anomaly scoring, and pattern-of-life analysis.",
   "keywords": [
-    "optimization algorithms",
-    "gradient descent",
-    "convergence analysis",
-    "numerical methods",
-    "mathematical programming",
-    "reproducible research",
-    "infrastructure automation"
+    "orbital mechanics",
+    "rendezvous windows",
+    "concealed lair",
+    "thermal anomaly",
+    "terrain anomaly",
+    "pattern of life",
+    "volcano camouflage",
+    "deterministic computation"
   ],
   "license": "MIT",
-  "related_identifiers": [
-    {
-      "identifier": "10.5281/zenodo.20417136",
-      "relation": "isVersionOf",
-      "scheme": "doi"
-    }
-  ],
-  "title": "Convergence Analysis of Gradient Descent Optimization",
-  "upload_type": "software",
-  "version": "2.5.2"
+  "title": "You Only Live Twice: VOLCANO — Special-Agent Mission Software",
+  "version": "0.1.0",
+  "upload_type": "software"
 }

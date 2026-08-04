@@ -1,11 +1,28 @@
-# Abstract {#sec:abstract}
+# Abstract
 
-This paper presents a convergence study of **fixed-step gradient descent** on a convex quadratic, framed as the computational exemplar of the [Research Project Template](https://github.com/docxology/template). The implementation lives in `projects/working/bond/you_only_live_twice/src/optimizer.py`; experiments and figures are orchestrated by `projects/working/bond/you_only_live_twice/scripts/optimization_analysis.py` and hydrated into the manuscript through `scripts/z_generate_manuscript_variables.py`, so tables and prose track `output/data/optimization_results.csv` after every pipeline run.
+{{BOND_IDENTITY}} ({{BOND_FILM_YEAR}}), mission codename {{BOND_CODENAME}}, is
+special-agent mission software for the adversary-prosecution problem a single
+agent faces when the enemy's base is hidden inside a volcano and the enemy's
+capsule must be intercepted in orbit. This package implements three
+deterministic, quantitative capabilities and reports them through the frozen
+BOND-API mission protocol.
 
-We evaluate {{CONFIG_NUM_STEP_SIZES}} step sizes from $\alpha = {{CONFIG_MIN_STEP_SIZE}}$ to $\alpha = {{CONFIG_MAX_STEP_SIZE}}$, spanning conservative, near-optimal, aggressive, and divergent regimes for a unit Hessian model. The build chain exercises template infrastructure end-to-end: scientific helpers (`infrastructure.scientific.stability`, `infrastructure.scientific.benchmarking`), validation, rendering (`infrastructure/rendering/pdf_renderer.py`), and reporting. Accessibility-oriented plotting defaults (colourblind-safe palette, 300 dpi exports) are centralized in `src/figures/` and `src/analysis/`.
+The **rendezvous / intercept solver** propagates two circular orbits under
+two-body Keplerian mechanics and finds every contiguous window where the chase
+spacecraft can acquire the target: the nominal scenario yields
+{{RENDEZVOUS_NUM_WINDOWS}} window(s) in a one-day horizon, opening at
+{{RENDEZVOUS_FIRST_START_S}} seconds with a peak elevation of
+{{RENDEZVOUS_FIRST_ELEV_DEG}}°, and a coplanar Hohmann intercept costs
+{{RENDEZVOUS_DELTA_V_M_S}} m/s over {{RENDEZVOUS_TRANSFER_TIME_S}} seconds.
+The **concealed-lair detector** fuses thermal and terrain anomaly scoring to
+locate a volcano-camouflaged structure, reporting
+{{LAIR_NUM_CANDIDATES}} candidate region(s), the strongest with a fused score
+of {{LAIR_TOP_FUSED_SCORE}}. The **pattern-of-life analyzer** reads a week of
+base activity ({{PATTERN_NUM_EVENTS}} events), finding
+{{PATTERN_NUM_PEAK_WINDOWS}} daily operating window(s)
+({{PATTERN_PEAK_WINDOWS}}) with a {{PATTERN_TEMPO}} operational tempo and a
+duty cycle of {{PATTERN_DUTY_CYCLE}}.
 
-Contributions are **methodological** and **architectural**. On the methods side, we relate empirical iteration counts and error decay to the scalar contraction factor $\rho(\alpha) = |1-\alpha|$ and document cases where runs hit $N_{\max} = {{CONFIG_MAX_ITERATIONS}}$ before meeting the gradient tolerance. On the architecture side, we demonstrate a zero-mock test suite on project `src/` (see [test_optimizer.py](https://github.com/docxology/template/blob/main/projects/working/bond/you_only_live_twice/tests/test_optimizer.py)), automated six-figure analysis, and reproducibility metadata (configuration hash, artifact counts) injected into [@sec:reproducibility].
-
-**Results (this configuration):** {{RESULT_NUM_CONVERGED}} of {{CONFIG_NUM_STEP_SIZES}} grid points report `converged=True` in the CSV; non-convergent rows flag either slow progress at small $\alpha$ under the iteration cap or instability when $|1-\alpha| \geq 1$. The analytical minimizer remains $x^\ast = {{RESULT_OPTIMUM_X}}$ with $f(x^\ast) = {{RESULT_OPTIMUM_F}}$ for the configured $(A,b)$.
-
-**Keywords:** {{CONFIG_KEYWORDS}}
+Every number above is computed, never hand-authored: the manuscript renders
+entirely from the deterministic scenario (seed {{SCENARIO_SEED}}, provenance
+{{MISSION_INPUT_HASH}}).

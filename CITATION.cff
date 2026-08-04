@@ -1,22 +1,26 @@
-authors:
-- affiliation: Active Inference Institute
-  family-names: Friedman
-  given-names: Daniel Ari
-  orcid: 0000-0001-6232-9096
 cff-version: 1.2.0
-date-released: '2026-07-10'
-doi: 10.5281/zenodo.20417136
+message: "If you use this software, please cite it as below."
+title: "You Only Live Twice: VOLCANO — Special-Agent Mission Software"
+abstract: >-
+  PROJECT BOND film package for You Only Live Twice (1967), mission codename
+  VOLCANO. Deterministic special-agent mission software: orbital rendezvous /
+  intercept window solving, concealed-lair detection via thermal and terrain
+  anomaly scoring, and base pattern-of-life analysis, exposed through the
+  BOND-API MissionProvider protocol.
+authors:
+  - family-names: Friedman
+    given-names: Daniel Ari
+    email: daniel@activeinference.institute
+    orcid: "https://orcid.org/0000-0001-6232-9096"
+    affiliation: Active Inference Institute
 keywords:
-- optimization algorithms
-- gradient descent
-- convergence analysis
-- numerical methods
-- mathematical programming
-- reproducible research
-- infrastructure automation
+  - orbital mechanics
+  - rendezvous windows
+  - concealed lair
+  - thermal anomaly
+  - pattern of life
+  - volcano camouflage
+  - "project bond"
 license: MIT
-message: If you use this software, please cite it using the metadata from this file.
-repository-code: https://github.com/docxology/you_only_live_twice
-title: Convergence Analysis of Gradient Descent Optimization
-type: software
-version: 2.5.2
+version: "0.1.0"
+date-released: "2026-08-04"

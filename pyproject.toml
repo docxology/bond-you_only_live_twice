@@ -1,5 +1,8 @@
-# Code Project Configuration
-# Inherits workspace settings from root pyproject.toml
+# you_only_live_twice — PROJECT BOND film package (VOLCANO)
+# Mission codename VOLCANO, from the 1967 bond film "You Only Live Twice".
+# Special-agent mission software: space-capsule rendezvous/intercept windows,
+# concealed-lair detection, and base pattern-of-life analysis.
+# Inherits workspace settings from root pyproject.toml. Local-only tree: no remote.
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -7,24 +10,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "you_only_live_twice"
-version = "2.5.2"
+version = "0.1.0"
 license = {text = "MIT"}
-description = "Fully-tested codebase with numerical optimization and analysis"
+description = "VOLCANO — special-agent mission software: orbital rendezvous windows, concealed-lair detection, pattern-of-life analysis"
 authors = [
     {name = "Daniel Ari Friedman", email = "daniel@activeinference.institute"}
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "bond-api",
     "numpy>=1.24.0",
     "matplotlib>=3.7.0",
     "pyyaml>=6.0",
-    "defusedxml>=0.7.1",
 ]
+
+# bond-api is the FROZEN BOND protocol (Layer 1). This film package implements
+# its MissionProvider; the path dependency keeps the local-only suite self-contained.
+[tool.uv.sources]
+bond-api = { path = "/Users/4d/Documents/GitHub/template/projects/working/bond/bond-api" }
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "ruff>=0.6.0",
+    "mypy>=1.10.0",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.pytest.ini_options]
@@ -37,8 +48,8 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short --strict-markers"
 
 [tool.coverage.run]
-# Core Template Rule: We only calculate coverage for primary source code (`src/`),
-# ensuring test code itself does not artificially inflate metric scores.
+# We only calculate coverage for primary source code (`src/`), ensuring test
+# code itself does not artificially inflate metric scores.
 source = ["src"]
 branch = true
 omit = [
@@ -58,6 +69,26 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "raise NotImplementedError",
 ]
+
+[tool.mypy]
+# Project-local mypy settings (the monorepo root config has no mypy_path for
+# this package's src/ layout). Mirrors the BOND-API gate: strict-ish typing,
+# explicit package bases, ignore missing stubs.
+python_version = "3.12"
+mypy_path = ["src"]
+explicit_package_bases = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
 
 [tool.uv]
 # Inherits workspace settings from root pyproject.toml

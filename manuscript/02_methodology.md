@@ -1,83 +1,85 @@
-# Methodology {#sec:methodology}
+# Methodology
 
-This section describes the implementation methodology, explicitly detailing how the optimization algorithms are constructed, validated, and analyzed using the Generalized Research Template's `infrastructure` and `tests` ecosystems.
+This section states the mathematics behind each of the three capabilities.
+Everything is standard, deterministic, and free of hidden randomness.
 
-## Algorithm Implementation
+## 1. Rendezvous / intercept window solving
 
-### Gradient Descent Algorithm
+Both spacecraft are modelled as two-body circular orbits. The mean orbital
+motion of a circular orbit of radius $a$ under gravitational parameter
+$\mu$ is
 
-The core algorithm implements the iterative procedure for unconstrained optimization. The [`optimizer` module](https://github.com/docxology/template/blob/main/projects/working/bond/you_only_live_twice/src/optimizer.py) uses the standard-library `logging` logger for optional verbose diagnostics; the [analysis orchestrator](https://github.com/docxology/template/blob/main/projects/working/bond/you_only_live_twice/scripts/optimization_analysis.py) uses `infrastructure.core.logging.utils.get_logger`. Tests run under the hermetic boundaries defined in the [test configuration](https://github.com/docxology/template/blob/main/projects/working/bond/you_only_live_twice/tests/conftest.py).
+$$ n = \sqrt{\frac{\mu}{a^3}} $$
 
-**Algorithm — Gradient Descent (implemented in the [optimizer module](https://github.com/docxology/template/blob/main/projects/working/bond/you_only_live_twice/src/optimizer.py#L87-L173))**
+and the position and velocity in the Earth-centred inertial (ECI) frame follow
+from the classical orbital elements $(a, e=0, i, \Omega, \nu)$ via the standard
+perifocal → ECI 3-1-3 rotation. The true anomaly advances linearly,
 
-> **Input:** Initial point $x_0$, step size $\alpha$, tolerance $\epsilon$, max iterations $N_{\max}$
->
-> 1. Initialize $k \leftarrow 0$
-> 2. **While** $k < N_{\max}$ **do:**
->    - Compute gradient $g_k = \nabla f(x_k)$
->    - **If** $\|g_k\|_2 < \epsilon$ **then return** $x_k$ *(converged)*
->    - Update: $x_{k+1} \leftarrow x_k - \alpha \cdot g_k$
->    - $k \leftarrow k + 1$
-> 3. **Return** $x_k$ *(max iterations reached)*
+$$ \nu(t) = u_0 + n\,t, $$
 
-## Infrastructure Integration
+so a candidate orbit is fully described by its altitude (radius), inclination,
+RAAN, and initial argument of latitude $u_0$.
 
-The methodology explicitly bridges theoretical mathematics with production-grade validation through the `infrastructure.scientific` module.
+Given the chaser state $(\mathbf{r}_c, \mathbf{v}_c)$ and the target position
+$\mathbf{r}_t$, the line-of-sight vector is $\boldsymbol{\rho} = \mathbf{r}_t -
+\mathbf{r}_c$ with slant range
 
-### Numerical Stability Analysis
+$$ \rho = \lVert \mathbf{r}_t - \mathbf{r}_c \rVert $$
 
-Rather than writing ad-hoc validation code, the project imports `infrastructure.scientific.stability.check_numerical_stability`. This utility subjects the objective function to a barrage of extreme inputs (NaN, Inf, $\pm 10^{10}$) to calculate a formalized stability score. If this score degrades, the [analysis orchestrator](https://github.com/docxology/template/blob/main/scripts/pipeline/stage_02_analysis.py) execution deliberately aborts, ensuring the methodology cannot enter unrecoverable states.
+and the target elevation $\varepsilon$ above the chaser's local horizontal
+plane (the plane perpendicular to the local radial direction
+$\hat{\mathbf{r}}_c$) is
 
-### Performance Benchmarking
+$$ \varepsilon = \operatorname{atan2}\!\left( \boldsymbol{\rho}\cdot\hat{\mathbf{r}}_c,\,
+   \lVert \boldsymbol{\rho} - (\boldsymbol{\rho}\cdot\hat{\mathbf{r}}_c)\hat{\mathbf{r}}_c \rVert \right). $$
 
-The analysis exercises [`infrastructure.scientific.benchmarking.benchmark_function`](https://github.com/docxology/template/blob/main/infrastructure/scientific/benchmarking.py) as a runtime diagnostic. Host-dependent timing and memory observations are logged but excluded from tracked evidence. The canonical report records fixed inputs and exact objective values, while the dimensional figure reports deterministic convergence iterations and the proxy $d \times \text{iterations}$; neither surface claims that one host run proves an asymptotic bound.
+A **rendezvous window** is a contiguous time interval on which both
+$\rho \le \rho_\text{max}$ and $\varepsilon \ge \varepsilon_\text{min}$ hold.
+The solver steps the clock, propagates both satellites, and merges consecutive
+satisfying samples into windows. For the intercept burn, a coplanar Hohmann
+transfer between the two circular orbits yields the two-impulse $\Delta v$
+budget
 
-## Convergence Analysis
+$$ \Delta v = \left|\sqrt{\mu\left(\tfrac{2}{a_1}-\tfrac{1}{a_t}\right)}-\sqrt{\tfrac{\mu}{a_1}}\right|
+   + \left|\sqrt{\tfrac{\mu}{a_2}}-\sqrt{\mu\left(\tfrac{2}{a_2}-\tfrac{1}{a_t}\right)}\right| $$
 
-For quadratic functions $f(x) = \frac{1}{2}x^T A x - b^T x$ where $A$ is positive definite, the convergence factor becomes [@bertsekas1999nonlinear]:
+with transfer semi-major axis $a_t = (a_1+a_2)/2$ and transfer time equal to
+half the transfer-orbit period.
 
-\begin{equation}
-\label{eq:convergence_factor}
-\rho = \frac{|\lambda_{\max} - \alpha\lambda_{\min}|}{|\lambda_{\min} + \alpha\lambda_{\max}|}
-\end{equation}
+## 2. Concealed-lair detection via thermal + terrain anomaly
 
-Optimal convergence occurs when $\alpha = \frac{2}{\lambda_{\min} + \lambda_{\max}}$, yielding $\rho = \frac{\kappa - 1}{\kappa + 1}$.
+A concealed lair is found by scoring each channel against a locally modelled
+background. A Gaussian low-pass
 
-## Experimental Setup
+$$ \tilde{g} = K_\sigma * g $$
 
-### Step Size Analysis
+approximates the smooth natural signal (the thermal lapse with altitude, the
+smooth volcanic cone). Each pixel is then expressed as a standardized residual,
 
-Step sizes are not chosen ad hoc in the manuscript: they are read from `experiment.step_sizes` in `manuscript/config.yaml` and passed through `run_convergence_experiment()` in `src/analysis/` (entry: `scripts/optimization_analysis.py`). The active grid for this build is:
+$$ z_{ij} = \frac{g_{ij} - \tilde{g}_{ij}}{\sigma_{\text{res}}}, $$
 
-{{CONFIG_STEP_SIZES_BULLETS}}
+where $\sigma_{\text{res}}$ is the standard deviation of the residuals over the
+map. The **thermal anomaly** is the one-tailed $z$ (we look for excess heat); the
+**terrain anomaly** is the magnitude $|z|$ (a lair may be a raised shelf *or* an
+excavated depression, both of which deviate from the smooth cone). The two maps
+are fused with weights $w_T, w_D$ as
 
-Labels follow the same agency taxonomy used for plot colours (`_agency_category` in the analysis script): **conservative** (small $\alpha$, slow but stable on $H=I$), **near-optimal** (including $\alpha=1$ where the method reaches $x^\ast$ in one step for this quadratic), **aggressive** ($1 < \alpha < 2$, still linearly contracting in $|x-x^\ast|$ but oscillatory in sign), and **divergent** ($|1-\alpha| \geq 1$).
+$$ s_{ij} = \frac{w_T\, z^T_{ij} + w_D\, z^D_{ij}}{w_T + w_D}. $$
 
-### Zero-Mock Testing Methodology
+Connected components of the thresholded fused map are labelled by flood fill
+and reported as candidate regions, ranked by peak fused score.
 
-The most critical aspect of the project's methodology is its validation framework. The project is governed by a strict Zero-Mock testing policy, evaluated actively by executing `uv run pytest projects/working/bond/you_only_live_twice/tests/` during the infrastructure build phase.
+## 3. Pattern-of-life analysis
 
-1. **Project tests**: [`projects/working/bond/you_only_live_twice/tests/test_optimizer.py`](../tests/test_optimizer.py) exercises `src/optimizer.py` (typical, edge, boundary, and pathological inputs including NaN/Inf and zero gradients) and, when infrastructure imports succeed, call into `optimization_analysis.py` helpers—without mocks. Suite size: [`docs/_generated/COUNTS.md`](../../../../docs/_generated/COUNTS.md).
-2. **Infrastructure validation**: The repository-level `tests/infra_tests/` suite validates shared template modules (e.g. pipeline and discovery helpers) independently of this project’s manuscript.
-3. **Coverage Gates**: The [GitHub Actions CI workflow](https://github.com/docxology/template/blob/main/.github/workflows/ci.yml) enforces a mandatory ≥90% statement coverage gate on `projects/working/bond/you_only_live_twice/src/` prior to treating the project as build-green.
+A base's activity is modelled as a Poisson point process whose instantaneous
+rate follows a diurnal envelope (a quiet overnight floor plus morning and
+evening operating peaks). The observed events are binned into a
+$7\times 24$ hourly histogram $h_{d,h}$, giving a mean daily profile
 
-### Stopping rule and reporting
+$$ \bar{p}_h = \frac{1}{7}\sum_{d=0}^{6} h_{d,h}. $$
 
-`gradient_descent()` terminates when $\|\nabla f(x_k)\|$ falls below `experiment.tolerance`, when $k$ reaches `experiment.max_iterations`, or when an objective, gradient, or update becomes non-finite. The boolean `converged` plus `termination_reason` in exported CSV rows distinguish these outcomes. A non-finite candidate is rejected before it enters `objective_history`, preserving the last finite state for reproducible reporting. Downstream, `scripts/z_generate_manuscript_variables.py` aggregates the CSV into `RESULT_*` placeholders so tables and prose cannot drift from the last analysis run.
-
-### Figure generation contract
-
-Each figure in `03_results.md` maps to a generator in `src/figures/` (`generate_convergence_plot`, `generate_step_size_sensitivity_plot`, `generate_convergence_rate_plot`, `generate_complexity_visualization`, `generate_stability_visualization`, `generate_benchmark_visualization`), orchestrated by `src/analysis/` / `scripts/optimization_analysis.py`. Captions in the markdown intentionally name the function and the key parameters (tolerance lines, grids, dimensions) so reviewers can navigate from PDF to code without inferring hidden defaults.
-
-The same generator writes explicit `metadata.alt_text` for every registered
-figure. The alt text states what the visual encodes and preserves the boundary
-between deterministic observations and host-dependent diagnostics. Run the
-opt-in publication migration gate with
-`--require-figure-accessibility` to verify that every referenced figure has
-this metadata before promotion.
-
-## Analysis Pipeline & LaTeX Integration
-
-The automated analysis script leverages [`infrastructure.core.progress`](https://github.com/docxology/template/blob/main/infrastructure/core/progress.py) (`ProgressBar`, `SubStageProgress`) to orchestrate experiments, collect convergence trajectories, and generate publication-quality visualizations seamlessly.
-
-The research template supports advanced LaTeX customization through the `preamble.md` configuration. This is ingested directly by `infrastructure.rendering.latex_utils.py` and `pdf_renderer.py`, automatically linking compiled PGF plots and BibTeX citations. This automated approach ensures an unbreakable chain of custody from raw algorithmic execution to the final rendered manuscript.
+The dominant operational periodicity is read from the normalized
+autocorrelation of the weekly series, and contiguous hours of the daily profile
+above a given percentile are reported as **peak operating windows**. Tempo is
+classified from the mean event rate, and duty cycle is the fraction of hourly
+bins containing activity.
