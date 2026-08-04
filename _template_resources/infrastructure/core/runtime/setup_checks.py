@@ -1,0 +1,172 @@
+"""Environment setup checks for Stage 00."""
+
+from __future__ import annotations
+
+import subprocess
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+from infrastructure.core.logging.utils import get_logger, log_success
+from infrastructure.core.files.coverage_cleanup import clean_coverage_files
+from infrastructure.core.project_paths import resolve_project_root
+from infrastructure.core.runtime.env_deps import (
+    check_build_tools,
+    check_dependencies,
+    install_missing_packages,
+)
+from infrastructure.core.runtime.environment import (
+    check_python_version,
+    set_environment_variables,
+    setup_directories,
+    verify_source_structure,
+)
+
+logger = get_logger(__name__)
+
+
+def run_environment_setup_checks(repo_root: Path, project_name: str) -> list[tuple[str, bool]]:
+    """Run the canonical Stage 00 check registry and capture every outcome."""
+    clean_coverage_files(repo_root, scope_dir=resolve_project_root(repo_root, project_name))
+    checks: tuple[tuple[str, Callable[[], bool]], ...] = (
+        ("Python version", check_python_version),
+        ("Dependencies", lambda: sync_workspace_dependencies(repo_root)),
+        ("Build tools", check_build_tools),
+        ("Directory structure", lambda: setup_directories(repo_root, project_name)),
+        ("Source structure", lambda: verify_source_structure(repo_root, project_name)),
+        ("Project discovery", lambda: validate_project_discovery(repo_root, project_name)),
+        ("Environment variables", lambda: set_environment_variables(repo_root)),
+        ("Project setup_hook (optional)", lambda: run_optional_setup_hook(repo_root, project_name)),
+    )
+    results: list[tuple[str, bool]] = []
+    for check_name, check_fn in checks:
+        try:
+            results.append((check_name, bool(check_fn())))
+        except Exception as exc:  # noqa: BLE001 - one failed check must not hide the remaining evidence
+            logger.error("Error during %s: %s", check_name, exc)
+            results.append((check_name, False))
+    return results
+
+
+def aggregate_check_results(
+    results: list[tuple[str, bool]],
+) -> tuple[bool, list[str]]:
+    """Summarise named check results into an ``(all_passed, lines)`` pair.
+
+    Args:
+        results: list of ``(check_name, passed_bool)`` pairs.
+
+    Returns:
+        Tuple of ``(all_passed, lines)`` where ``all_passed`` is True only if
+        every result passed, and ``lines`` is a list of status strings of the
+        form ``"OK: <check_name>"`` or ``"FAIL: <check_name>"``.
+    """
+    all_passed = True
+    lines: list[str] = []
+    for check_name, passed in results:
+        lines.append(("OK" if passed else "FAIL") + ": " + check_name)
+        if not passed:
+            all_passed = False
+    return all_passed, lines
+
+
+def sync_workspace_dependencies(
+    repo_root: Path,
+    *,
+    process_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> bool:
+    """Run ``uv sync`` with fallback to per-package install."""
+    logger.info("Checking for uv package manager...")
+    try:
+        result = process_runner(
+            ["uv", "sync"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            log_success("Workspace dependencies synced successfully with uv", logger)
+            logger.debug("uv output: %s", result.stdout)
+            return True
+        logger.warning("uv sync failed (exit code %s): %s", result.returncode, result.stderr)
+        logger.info("Falling back to individual dependency checking...")
+        all_present, missing = check_dependencies()
+        if not all_present and missing:
+            return install_missing_packages(missing)
+        return all_present
+    except FileNotFoundError:
+        logger.info("uv not found in PATH, using fallback dependency checking")
+        all_present, missing = check_dependencies()
+        if not all_present and missing:
+            return install_missing_packages(missing)
+        return all_present
+    except subprocess.TimeoutExpired:
+        logger.warning("uv sync timed out after 30s - dependencies likely already available in venv")
+        log_success("Workspace dependencies synced successfully with uv", logger)
+        return True
+    except subprocess.SubprocessError as exc:
+        logger.error("Subprocess error during uv sync: %s", exc, exc_info=True)
+        all_present, missing = check_dependencies()
+        if not all_present and missing:
+            return install_missing_packages(missing)
+        return all_present
+
+
+def validate_project_discovery(
+    repo_root: Path,
+    project_name: str,
+    *,
+    project_discoverer: Callable[[Path], list[Any]] | None = None,
+) -> bool:
+    """Validate project discovery."""
+    from infrastructure.core.project_paths import resolve_project_root
+    from infrastructure.project.discovery import discover_projects
+    from infrastructure.project.validation import validate_project_structure
+
+    logger.info("Discovering available projects...")
+    try:
+        target_root = resolve_project_root(repo_root, project_name)
+        target_valid, target_message = validate_project_structure(target_root)
+        if not target_valid:
+            logger.error("Target project is not runnable at %s: %s", target_root, target_message)
+            return False
+        logger.info("Target project resolved: %s", target_root)
+
+        projects = (project_discoverer or discover_projects)(repo_root)
+        if not projects:
+            logger.warning("No valid projects found in projects/ directory")
+            return False
+
+        logger.info("Discovered %d valid project(s):", len(projects))
+        for project in projects:
+            marker = "→" if project.name == project_name else " "
+            structure = []
+            if project.has_src:
+                structure.append("src")
+            if project.has_tests:
+                structure.append("tests")
+            if project.has_scripts:
+                structure.append("scripts")
+            if project.has_manuscript:
+                structure.append("manuscript")
+            structure_str = ", ".join(structure) if structure else "minimal"
+            logger.info("  %s %s: %s", marker, project.name, structure_str)
+            if project.name == project_name:
+                logger.info("    Setting up: %s", project.name)
+        return True
+    except OSError as exc:
+        logger.error("Project discovery failed: %s", exc)
+        return False
+
+
+def run_optional_setup_hook(repo_root: Path, project_name: str) -> bool:
+    """Run optional setup hook."""
+    from infrastructure.core.project_paths import resolve_project_root
+    from infrastructure.project.setup_hook import run_project_setup_hook
+
+    project_dir = resolve_project_root(repo_root, project_name)
+    if not project_dir.is_dir():
+        return True
+    return bool(run_project_setup_hook(project_dir))

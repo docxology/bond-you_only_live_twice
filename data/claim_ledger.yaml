@@ -1,0 +1,57 @@
+claims:
+  - claim_id: figure-export-dpi
+    kind: number
+    value: 300
+    source: projects/working/bond/you_only_live_twice/src/viz_config.py plotting defaults (dpi)
+    source_tier: project_source
+    freshness: active
+    artifact_path: output/figures/convergence_plot.png
+  - claim_id: step-size-sensitivity-cap
+    kind: number
+    value: 500
+    source: projects/working/bond/you_only_live_twice/src/sweeps.py sensitivity_sweep max_iter cap
+    source_tier: generated_metric
+    freshness: active
+    artifact_path: output/figures/step_size_sensitivity.png
+  - claim_id: stability-log-lower
+    kind: number
+    value: -6
+    source: projects/working/bond/you_only_live_twice/src/figures/scientific_stability.py stability visualization caption
+    source_tier: project_source
+    freshness: active
+    artifact_path: output/figures/stability_analysis.png
+  - claim_id: solution-relative-error-exponent
+    kind: number
+    value: -4
+    source: projects/working/bond/you_only_live_twice/manuscript/03_results.md stated precision threshold
+    source_tier: manuscript_claim
+    freshness: active
+    artifact_path: manuscript/03_results.md
+  - claim_id: stability-log-upper
+    kind: number
+    value: -9
+    source: projects/working/bond/you_only_live_twice/src/figures/scientific_stability.py stability visualization caption
+    source_tier: project_source
+    freshness: active
+    artifact_path: output/figures/stability_analysis.png
+  - claim_id: benchmark-tolerance-exponent
+    kind: number
+    value: -10
+    source: projects/working/bond/you_only_live_twice/scripts/optimization_analysis.py dimensional benchmark tolerance
+    source_tier: project_source
+    freshness: active
+    artifact_path: output/figures/performance_benchmark.png
+  - claim_id: benchmark-min-iterations
+    kind: number
+    value: 219
+    source: projects/working/bond/you_only_live_twice/manuscript/03_results.md benchmark caption
+    source_tier: manuscript_claim
+    freshness: active
+    artifact_path: output/figures/performance_benchmark.png
+  - claim_id: benchmark-max-iterations
+    kind: number
+    value: 238
+    source: projects/working/bond/you_only_live_twice/manuscript/03_results.md benchmark caption
+    source_tier: manuscript_claim
+    freshness: active
+    artifact_path: output/figures/performance_benchmark.png

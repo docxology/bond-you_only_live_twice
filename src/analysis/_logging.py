@@ -1,0 +1,37 @@
+"""Shared logging helpers for analysis submodules."""
+
+from __future__ import annotations
+
+import logging
+
+from ._infra import get_logger as _infra_get_logger, infrastructure_available
+
+
+def _infra_available() -> bool:
+    return infrastructure_available()
+
+
+_FALLBACK_LOGGER_NAME = "you_only_live_twice.optimization_analysis"
+
+
+def _setup_fallback_logging() -> logging.Logger:
+    logger = logging.getLogger(_FALLBACK_LOGGER_NAME)
+    if logger.handlers:
+        return logger
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
+def get_logger() -> logging.Logger:
+    """Get logger."""
+    if _infra_available() and _infra_get_logger is not None:
+        logger = _infra_get_logger(__name__)
+        if isinstance(logger, logging.Logger):
+            return logger
+    return _setup_fallback_logging()
+
+
+__all__ = ["_setup_fallback_logging", "get_logger"]

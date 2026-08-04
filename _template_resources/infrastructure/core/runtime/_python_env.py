@@ -1,0 +1,267 @@
+"""Python interpreter and subprocess environment utilities.
+
+Validates Python version, virtual environment interpreter, uv availability,
+and provides subprocess environment configuration.
+"""
+
+import os
+import platform
+import re
+import subprocess  # nosec B404
+import sys
+from pathlib import Path
+
+from infrastructure.core.logging.utils import get_logger, log_success
+
+logger = get_logger(__name__)
+
+_SECRET_ENV_NAME = re.compile(r"(?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|PRIVATE[_-]?KEY|CREDENTIAL)", re.IGNORECASE)
+_ANALYSIS_SECRET_OPT_IN = "ANALYSIS_ALLOW_SECRETS"
+
+
+def validate_analysis_script_path(script_path: Path, project_root: Path) -> Path:
+    """Return a runnable project script only when it stays under ``scripts/``.
+
+    Stage 02 normally receives paths from :func:`script_discovery`, but this
+    low-level helper is also public and can be called directly. Resolve the
+    candidate before checking containment so ``..`` components and symlinks
+    cannot redirect execution outside the project script tree.
+    """
+    scripts_root = (project_root / "scripts").resolve()
+    candidate = Path(script_path).resolve(strict=False)
+    try:
+        candidate.relative_to(scripts_root)
+    except ValueError as exc:
+        raise ValueError(f"analysis script must remain under {scripts_root}: {script_path}") from exc
+    if candidate.suffix != ".py" or not candidate.is_file():
+        raise ValueError(f"analysis script is missing or not a Python file: {script_path}")
+    return candidate
+
+
+def check_python_version() -> bool:
+    """Verify Python 3.10+ is available (matches ``requires-python`` in pyproject.toml)."""
+    version_str = platform.python_version()
+
+    if sys.version_info < (3, 10):
+        logger.error(f"Python 3.10+ required, found {version_str}")
+        return False
+
+    log_success(f"Python {version_str} available", logger)
+    return True
+
+
+def check_uv_available() -> bool:
+    """Check if uv package manager is available and working."""
+    try:
+        result = subprocess.run(  # nosec B603 B607
+            ["uv", "--version"], capture_output=True, text=True, check=False, timeout=10
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.SubprocessError, subprocess.TimeoutExpired):
+        return False
+
+
+def get_python_command() -> list[str]:
+    """Get sys.executable for subprocess calls."""
+    return [sys.executable]
+
+
+def resolve_test_python(venv_dir: Path) -> list[str]:
+    """Resolve the interpreter command for running a test suite.
+
+    Prefers the interpreter inside ``venv_dir`` (``bin/python`` on POSIX,
+    ``Scripts/python.exe`` on Windows) but only when that interpreter file
+    actually exists. A virtual-environment directory can survive on disk with
+    a dangling ``python`` symlink — e.g. the base interpreter it pointed at was
+    moved or removed. ``Path.exists()`` follows symlinks, so a broken link
+    resolves to ``False`` and we fall back to the current workspace
+    interpreter instead of crashing the caller with
+    ``FileNotFoundError: .../.venv/bin/python``.
+
+    Args:
+        venv_dir: Path to a ``.venv`` directory (need not exist).
+
+    Returns:
+        ``[str(venv_python)]`` when the venv interpreter exists, otherwise
+        :func:`get_python_command` (the running ``sys.executable``).
+    """
+    venv_python = venv_dir / "Scripts" / "python.exe" if os.name == "nt" else venv_dir / "bin" / "python"
+    if venv_python.exists():
+        return [str(venv_python)]
+    if venv_dir.is_dir():
+        # The venv directory exists but its interpreter does not — almost
+        # always a dangling symlink (base interpreter moved/removed). Fall
+        # back, but make it LOUD: a silent fallback to the workspace
+        # interpreter could otherwise mask a project whose pinned deps differ
+        # from the workspace. (A genuinely absent venv_dir is normal and stays
+        # quiet — that is the expected path for venv-less projects.)
+        logger.warning(
+            "Project venv at %s has no usable interpreter (%s is missing or a "
+            "broken symlink); falling back to the workspace interpreter %s. "
+            "Run `uv sync` or `rm -rf %s` if this project needs pinned deps.",
+            venv_dir,
+            venv_python,
+            sys.executable,
+            venv_dir,
+        )
+    return get_python_command()
+
+
+def validate_interpreter() -> bool:
+    """Validate that sys.executable is inside the expected virtual environment.
+
+    Checks that the Python interpreter being used is the one managed by
+    uv inside the project's .venv directory. This prevents "environment escape"
+    where a system Python accidentally intercepts pipeline execution.
+
+    Returns:
+        True if interpreter is inside the venv (or no venv is expected), False otherwise.
+
+    Note:
+        Logs a warning if the interpreter is outside the venv but does not
+        raise an exception, since CI environments and direct invocations
+        may have valid reasons for running outside a venv.
+    """
+    interpreter = Path(sys.executable).resolve()
+
+    # Check if VIRTUAL_ENV is set and matches
+    venv_path = os.environ.get("VIRTUAL_ENV")
+    if venv_path:
+        venv_resolved = Path(venv_path).resolve()
+        try:
+            interpreter.relative_to(venv_resolved)
+            logger.debug(f"Interpreter validated: {interpreter} is inside {venv_resolved}")
+            return True
+        except ValueError:
+            logger.warning(
+                f"⚠️  Interpreter escape detected: sys.executable={interpreter} "
+                f"is NOT inside VIRTUAL_ENV={venv_resolved}"
+            )
+            return False
+
+    # Check for .venv in common ancestor directories
+    for parent in interpreter.parents:
+        if parent.name == ".venv":
+            logger.debug(f"Interpreter validated: {interpreter} is inside a .venv")
+            return True
+
+    # No venv detected — might be CI or system Python, just note it
+    logger.debug(f"No virtual environment detected for interpreter: {interpreter}")
+    return True
+
+
+def get_subprocess_env(
+    base_env: dict[str, str] | None = None,
+    *,
+    redact_secrets: bool = False,
+) -> dict[str, str]:
+    """Return env dict with VIRTUAL_ENV stripped when uv is active (avoids warnings).
+
+    Args:
+        base_env: Base environment dictionary (defaults to os.environ if None)
+        redact_secrets: Remove credential-like variable names before returning.
+
+    Returns:
+        Environment dictionary suitable for subprocess.run(env=...)
+    """
+    env = dict(os.environ if base_env is None else base_env)
+    if redact_secrets:
+        for key in tuple(env):
+            if _SECRET_ENV_NAME.search(key):
+                env.pop(key, None)
+    # Unset VIRTUAL_ENV when using uv to avoid warnings about absolute paths
+    if check_uv_available() and "VIRTUAL_ENV" in env:
+        env.pop("VIRTUAL_ENV", None)
+    return env
+
+
+def build_analysis_script_cmd_and_env(
+    script_path: Path,
+    project_root: Path,
+    repo_root: Path,
+    *,
+    allow_secret_env: bool | None = None,
+) -> tuple[list[str], dict[str, str]]:
+    """Build the subprocess command and environment for running an analysis script.
+
+    Encapsulates venv detection, PYTHONPATH construction, and matplotlib env
+    setup that were previously inline in the analysis orchestrator script.
+
+    Args:
+        script_path: Path to the analysis script to execute.
+        project_root: Absolute path to the project directory (projects/{name}/).
+        repo_root: Absolute path to the repository root.
+        allow_secret_env: Explicitly permit credential-like environment
+            variables. When omitted, only ``ANALYSIS_ALLOW_SECRETS=1`` (or
+            another strict true value) opts in; the default is fail-closed.
+
+    Returns:
+        A (cmd, env) tuple ready for ``subprocess.run(cmd, env=env, ...)``.
+    """
+    import shutil
+    import tempfile
+
+    script_path = validate_analysis_script_path(script_path, project_root)
+    if allow_secret_env is None:
+        allow_secret_env = os.environ.get(_ANALYSIS_SECRET_OPT_IN, "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+
+    # Detect project-local venv: if the project has its own .venv with optional
+    # dependencies (e.g. discopy), use uv run from the project directory.
+    project_venv = project_root / ".venv"
+    if project_venv.is_dir():
+        uv_path = shutil.which("uv")
+        if uv_path:
+            cmd: list[str] = [uv_path, "run", "--directory", str(project_root), "python", str(script_path)]
+        else:
+            cmd = get_python_command() + [str(script_path)]
+    else:
+        cmd = get_python_command() + [str(script_path)]
+
+    env = get_subprocess_env(redact_secrets=not allow_secret_env)
+    env.setdefault("MPLBACKEND", "Agg")
+    env.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib"))
+    env["PYTHONPATH"] = os.pathsep.join(
+        [
+            # Project root first so scripts can ``from src.<pkg> import ...``
+            # (``src`` resolved as a package); ``project_root/src`` keeps the
+            # bare ``from <pkg> import`` form working too. Without the root,
+            # scripts that do not self-bootstrap sys.path fail with
+            # ``No module named 'src'``.
+            str(project_root),
+            str(project_root / "src"),
+            str(repo_root),
+            str(repo_root / "infrastructure"),
+        ]
+    )
+    env["PROJECT_DIR"] = str(project_root)
+    env.pop("VIRTUAL_ENV", None)
+
+    # ── Pass-through: project-specific and API key variables ─────────────────
+    # Any FEP_LEAN_* variables set in the parent shell (e.g. run.sh exporting
+    # FEP_LEAN_GAUSS_WORKFLOWS=1) are forwarded verbatim.  This ensures that
+    # enabling live Lean 4 / Hermes workflows from run.sh works end-to-end
+    # without requiring modifications to the project scripts themselves.
+    # API key variables are also forwarded so HermesConfig.from_settings()
+    # can resolve them even when ~/.gauss/.env is not on the subprocess PATH.
+    _PASSTHROUGH_PREFIXES = ("FEP_LEAN_",)
+    _PASSTHROUGH_KEYS = (
+        "OPENROUTER_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GAUSS_HOME",
+        "HERMES_MODEL",
+        "HERMES_API_BASE",
+        "OPENAI_BASE_URL",
+        "ELAN_HOME",
+    )
+    for key, val in os.environ.items():
+        if (any(key.startswith(p) for p in _PASSTHROUGH_PREFIXES) or key in _PASSTHROUGH_KEYS) and (
+            allow_secret_env or not _SECRET_ENV_NAME.search(key)
+        ):
+            env[key] = val
+
+    return cmd, env
