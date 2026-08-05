@@ -30,9 +30,12 @@ downward.
   likelihood ratios, posterior fusion, deterministic search order, discovery
   curve, realised and posterior-expected search effort.
 - `infiltration_planning.py` — slope / thermal / guard-exposure cost fields,
-  deterministic 4-connected A*, same-space greedy baseline.
+  deterministic 4-connected A*, same-space greedy baseline that backtracks so
+  it always reaches the goal (a truncated baseline would not bound A*).
 - `emitter_localization.py` — sensor-ring layout, exact TDOA range
-  differences, seconds→metres conversion, Gauss–Newton multilateration.
+  differences, seconds→metres conversion, Gauss–Newton multilateration. The
+  mission solves *noisy* timings; a noise-free solve is a forward-model round
+  trip and reports 0.0 by construction.
 - `pattern_of_life.py` — inhomogeneous-Poisson activity, weekly and daily
   histograms, autocorrelation periodicity, peak windows, tempo, duty cycle.
 - `scenario.py` — the deterministic scenario, the single analysis source

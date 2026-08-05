@@ -22,14 +22,17 @@ detector** fuses thermal and terrain anomaly scoring to locate a
 volcano-camouflaged structure, reporting {{LAIR_NUM_CANDIDATES}} candidate
 region(s), the strongest with a fused score of {{LAIR_TOP_FUSED_SCORE}}. The
 **hidden-base discovery** engine then fuses those cues with passive RF and a
-terrain-weighted prior, isolating the base in rank {{DISCOVERY_TRUE_RANK}} of
-{{DISCOVERY_CANDIDATE_CELLS}} candidate sites with posterior
-{{DISCOVERY_TRUE_POSTERIOR}} (P-found-within-10-sites
-{{DISCOVERY_P_FIRST_10}}). The **infiltration planner** routes an agent to the
+terrain-weighted prior, reaching the injected {{DISCOVERY_FOOTPRINT_CELLS}}-cell
+lair footprint at rank {{DISCOVERY_FOOTPRINT_RANK}} of
+{{DISCOVERY_CANDIDATE_CELLS}} candidate sites (P-found-within-10-sites
+{{DISCOVERY_P_FIRST_10}}); the injected *centre cell* is not recovered — it
+ranks {{DISCOVERY_CENTROID_RANK}}, {{DISCOVERY_PEAK_OFFSET_M}} m from the
+posterior peak. The **infiltration planner** routes an agent to the
 lair on a slope/thermal/guard-exposure cost surface, cutting route cost by
-{{INFILTRATION_REDUCTION_PCT}} % over a greedy baseline, and the **emitter
-locator** fixes the base's transmitter by TDOA multilateration to within
-{{EMITTER_ERROR_M}} m using {{EMITTER_SENSORS}} passive sensors. Finally the
+{{INFILTRATION_REDUCTION_PCT}} % over a goal-reaching greedy baseline, and the
+**emitter locator** fixes the base's transmitter by TDOA multilateration to
+within {{EMITTER_ERROR_M}} m using {{EMITTER_SENSORS}} passive sensors whose
+timings carry a {{EMITTER_TIME_NOISE_NS}} ns jitter. Finally the
 **pattern-of-life analyzer** reads a week of base activity
 ({{PATTERN_NUM_EVENTS}} events), finding {{PATTERN_NUM_PEAK_WINDOWS}} daily
 operating window(s) ({{PATTERN_PEAK_WINDOWS}}) with a {{PATTERN_TEMPO}}

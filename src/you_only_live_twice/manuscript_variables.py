@@ -162,6 +162,9 @@ def generate_variables(
         "SETUP_INFIL_GUARD_WEIGHT": _fmt(desc["infiltration"]["guard_weight"]),
         "SETUP_EMITTER_RING_RADIUS_M": _fmt(desc["emitter"]["ring_radius_m"]),
         "SETUP_EMITTER_SENSORS": _fmt(desc["emitter"]["sensor_count"]),
+        "SETUP_EMITTER_TIME_NOISE_NS": _fmt(
+            round(desc["emitter"]["time_noise_s"] * 1e9, 3)
+        ),
         # Rendezvous
         "RENDEZVOUS_NUM_WINDOWS": str(rv["num_windows"]),
         "RENDEZVOUS_FIRST_START_S": _fmt(rv["first_window_start_s"]),
@@ -182,9 +185,24 @@ def generate_variables(
         "LAIR_TOP_THERMAL_SCORE": _fmt(lair["top_thermal_score"]),
         "LAIR_TOP_TERRAIN_SCORE": _fmt(lair["top_terrain_score"]),
         "LAIR_TOP_AREA_CELLS": str(lair["top_area_cells"]),
-        # Hidden-base discovery
-        "DISCOVERY_TRUE_POSTERIOR": _fmt(disc["true_posterior"]),
-        "DISCOVERY_TRUE_RANK": str(disc["true_rank"]),
+        "LAIR_FOOTPRINT_CELLS": str(lair["footprint_cells"]),
+        "LAIR_DETECTOR_OFFSET_M": _fmt(lair["detector_offset_m"]),
+        "LAIR_DETECTOR_OFFSET_CELLS": _fmt(lair["detector_offset_cells"]),
+        "LAIR_DETECTED_IN_FOOTPRINT": "yes" if lair["detected_in_footprint"] else "no",
+        # Hidden-base discovery. Two ground-truth questions are reported
+        # separately and must not be conflated: did the search find the
+        # *facility* (footprint), and did it land on the injected *centre cell*
+        # (centroid)? The second is far stricter and this scene fails it.
+        "DISCOVERY_FOOTPRINT_RANK": str(disc["footprint_rank"]),
+        "DISCOVERY_FOOTPRINT_POSTERIOR": _fmt(disc["footprint_posterior"]),
+        "DISCOVERY_FOOTPRINT_CELLS": str(disc["footprint_cells"]),
+        "DISCOVERY_CENTROID_RANK": str(disc["centroid_rank"]),
+        "DISCOVERY_CENTROID_POSTERIOR": _fmt(disc["centroid_posterior"]),
+        "DISCOVERY_PEAK_OFFSET_M": _fmt(disc["peak_offset_m"]),
+        "DISCOVERY_SINGLE_CUE_RANKS": ", ".join(
+            f"{name} {rank}"
+            for name, rank in sorted(disc["single_cue_footprint_ranks"].items())
+        ),
         "DISCOVERY_EXPECTED_EFFORT_CELLS": _fmt(disc["expected_effort_cells"]),
         "DISCOVERY_P_FIRST_10": _fmt(disc["prob_found_first_10"]),
         "DISCOVERY_CANDIDATE_CELLS": str(disc["num_candidate_cells"]),
@@ -200,6 +218,9 @@ def generate_variables(
         "EMITTER_ERROR_M": _fmt(emit["error_m"]),
         "EMITTER_ITERATIONS": str(emit["iterations"]),
         "EMITTER_SENSORS": str(emit["num_sensors"]),
+        "EMITTER_TIME_NOISE_NS": _fmt(round(emit["time_noise_s"] * 1e9, 3)),
+        "EMITTER_IMAGERY_OFFSET_M": _fmt(emit["imagery_site_offset_m"]),
+        "EMITTER_TRUTH_IMAGERY_OFFSET_M": _fmt(emit["truth_to_imagery_offset_m"]),
         # Pattern of life
         "PATTERN_NUM_EVENTS": str(pat["num_events"]),
         "PATTERN_DOMINANT_PERIOD_H": _fmt(period_hours),

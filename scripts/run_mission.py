@@ -52,7 +52,8 @@ def run_phase(phase: str) -> None:
             f"rendezvous_windows={res['rendezvous']['num_windows']} "
             f"capture_windows={res['capture']['num_windows']} "
             f"lair_candidates={res['concealed_lair']['num_candidates']} "
-            f"discovery_rank={res['hidden_base_discovery']['true_rank']} "
+            f"discovery_footprint_rank={res['hidden_base_discovery']['footprint_rank']} "
+            f"discovery_centroid_rank={res['hidden_base_discovery']['centroid_rank']} "
             f"infiltration_reduction={res['infiltration']['cost_reduction']} "
             f"pattern_tempo={res['pattern_of_life']['tempo']}"
         )

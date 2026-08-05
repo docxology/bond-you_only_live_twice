@@ -20,9 +20,9 @@ found, routed into, and learned the rhythm of.
 | Rendezvous / intercept windows | `rendezvous_windows.py` | Two-body orbital mechanics: propagate circular orbits to ECI states, score line-of-sight range and elevation, find contiguous windows, Hohmann delta-v budget |
 | Orbital capture & phasing | `orbital_capture.py` | Capture envelope (range **and** relative speed), velocity-matching grapple burn, phasing lead angle and wait time |
 | Concealed-lair detection | `terrain_anomaly.py` | Standardized-residual thermal (one-tailed) and terrain (magnitude) anomaly scoring against a smoothed background, fused and connected-component labelled |
-| Hidden-base discovery | `hidden_base_discovery.py` | Bayesian cue fusion (thermal / terrain / RF Gaussian likelihood ratios over a terrain-weighted prior), posterior map, deterministic search order, discovery curve, realised and posterior-expected search effort |
-| Infiltration planning | `infiltration_planning.py` | Slope / thermal / guard-line-of-sight cost fields with a lava mask, deterministic 4-connected A* against a same-space greedy baseline |
-| Emitter localization | `emitter_localization.py` | TDOA hyperbolic multilateration by Taylor-series (Gauss–Newton) estimation, plus the receiver-side seconds→metres conversion |
+| Hidden-base discovery | `hidden_base_discovery.py` | Bayesian cue fusion (thermal / terrain / RF Gaussian likelihood ratios over a terrain-weighted prior), posterior map, deterministic search order, discovery curve, realised and posterior-expected search effort. Scored against the *injected* lair, never against the detector's own argmax |
+| Infiltration planning | `infiltration_planning.py` | Slope / thermal / guard-line-of-sight cost fields with a lava mask, deterministic 4-connected A* against a same-space greedy baseline that also reaches the goal (it backtracks), so the reported reduction is bounded by optimality |
+| Emitter localization | `emitter_localization.py` | TDOA hyperbolic multilateration by Taylor-series (Gauss–Newton) estimation over receiver timings carrying a fixed-seed jitter, plus the receiver-side seconds→metres conversion |
 | Pattern of life | `pattern_of_life.py` | Inhomogeneous-Poisson activity, weekly / daily histograms, autocorrelation dominant period, peak operating windows, tempo, duty cycle |
 
 Four further modules bind the above into a package:

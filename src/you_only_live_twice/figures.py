@@ -10,7 +10,9 @@ than a field, notably emitter localisation, are reported numerically):
   window shaded;
 * concealed-lair detection — the thermal + terrain scenes and the fused
   anomaly map with the top candidate region marked;
-* hidden-base discovery — the fused posterior map with the true base marked;
+* hidden-base discovery — the fused posterior map with the injected lair
+  footprint, its centre (ground truth) and the posterior peak (the estimate)
+  marked separately, so their disagreement is visible;
 * infiltration route — the movement-cost field with the A* route, entry, lair
   and guard posts overlaid;
 * pattern of life — the daily activity profile with the peak windows and the
@@ -31,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -254,15 +257,34 @@ def plot_orbital_capture(
 
 
 def plot_hidden_base_discovery() -> str:
-    """Plot the posterior map and search rank order with the true base marked."""
+    """Plot the posterior with the injected truth and the posterior peak both marked.
+
+    The two markers are deliberately distinct: the injected lair centre is
+    ground truth from the scene geometry, the peak is the estimate. They do not
+    coincide, and the figure shows that rather than hiding it.
+    """
 
     scenario = build_scenario()
     posterior = scenario["discovery"]["posterior"]
     true_cell = scenario["discovery"]["true_cell"]
+    footprint = scenario["lair_footprint"]
+    peak = np.unravel_index(int(np.argmax(posterior)), posterior.shape)
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
     im = ax.imshow(posterior, cmap="inferno")
     fig.colorbar(im, ax=ax, shrink=0.85, label="P(base at cell)")
+    foot_rows = [c[0] for c in sorted(footprint)]
+    foot_cols = [c[1] for c in sorted(footprint)]
+    ax.plot(
+        foot_cols,
+        foot_rows,
+        linestyle="none",
+        marker="s",
+        ms=2.0,
+        color="deepskyblue",
+        alpha=0.45,
+        label="injected lair footprint",
+    )
     if true_cell is not None:
         ax.plot(
             true_cell[1],
@@ -271,8 +293,17 @@ def plot_hidden_base_discovery() -> str:
             color="cyan",
             ms=12,
             mew=2.5,
-            label="true base",
+            label="injected lair centre (truth)",
         )
+    ax.plot(
+        peak[1],
+        peak[0],
+        marker="+",
+        color="lime",
+        ms=13,
+        mew=2.2,
+        label="posterior peak (estimate)",
+    )
     ax.set_title("Hidden-base discovery posterior — VOLCANO")
     ax.set_xlabel("Column")
     ax.set_ylabel("Row")

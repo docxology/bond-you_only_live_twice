@@ -68,7 +68,17 @@ candidate regions, ranked by peak fused score.
 
 To decide *where* the base is before a strike, the mission treats each of the
 $N$ candidate cells as a hypothesis and applies Bayesian belief updating
-[@pearl1988]. Cell $c$ carries a prior $P(c) \propto 1 + \beta\max(0,z^D_c)$
+[@pearl1988].
+
+*What counts as ground truth here.* The evaluated truth is the lair the scene
+generator injects — its centre cell and its carved footprint — determined by
+the cone centre and a fixed offset before any anomaly map exists. It is not the
+argmax of the fused anomaly map, and the passive-RF cue is generated at the
+injected site rather than at the detector's answer. Nothing the posterior
+consumes is derived from the quantity the posterior is asked to recover, so the
+reported ranks are measurements and not identities.
+
+Cell $c$ carries a prior $P(c) \propto 1 + \beta\max(0,z^D_c)$
 (terrain anomalies raise the prior). Each sensor cue $z$ is modelled as a
 Gaussian measurement with likelihood ratio
 
@@ -102,10 +112,21 @@ guard line-of-sight exposure $\hat{g}$ (an elevation-occluded visibility count
 from every watch post), and an impassable-lava mask. A deterministic 4-connected
 **A*** search [@hart1968; @cormen2009] with an admissible Manhattan heuristic
 returns the optimal route — admissibility holds because every step costs at
-least $1$ and the heuristic counts steps, so A* is guaranteed optimal. A
-monotone greedy over the *same* search space provides the baseline, so A*
-optimality guarantees a non-negative cost reduction by construction rather
-than by a favourable choice of comparator.
+least $1$ and the heuristic counts steps, so A* is guaranteed optimal.
+
+The baseline is a greedy depth-first walk over the *same* search space: it
+always steps to the cheapest-looking unvisited neighbour and retraces one cell
+when it dead-ends, paying that cell's cost again. Two conditions are needed for
+the reported reduction to be non-negative by optimality rather than by a
+favourable comparator, and both are enforced in code. The baseline must live in
+the same 4-connected space over the same cost field — it does — *and* it must
+actually reach the goal, because A* minimises over goal-reaching walks only. A
+baseline that abandoned the search at a dead end would report the cost of a
+shorter journey, which can be below the optimal cost of the full journey and
+would make the reduction negative; the implementation therefore backtracks and
+raises when the goal is unreachable instead of returning a truncated route.
+`tests/test_infiltration_planning.py` pins a concrete grid on which the
+non-backtracking version returns a truncated walk cheaper than the optimum.
 
 ## 6. Emitter localization by TDOA
 
@@ -118,6 +139,13 @@ iteration on the normal equations [@foy1976], which converges to the true
 emitter for exact measurements. Receivers report *time* differences; these are
 converted to the range differences the geometry is solved in by multiplying by
 the propagation speed, so the speed of light never enters the estimator itself.
+
+Exact measurements make the solve a round-trip identity of the forward model:
+it returns the injected point to machine precision by construction, which
+checks solver–model consistency but measures no accuracy. The reported figure
+therefore comes from receiver timings perturbed by a fixed-seed Gaussian jitter
+of $\sigma_t$ before the conversion to ranges, so the error reflects a
+geometry-dependent dilution of precision and can degrade.
 
 ## 7. Pattern-of-life analysis
 

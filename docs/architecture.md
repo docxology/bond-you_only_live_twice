@@ -44,7 +44,7 @@ independently testable and importable without the protocol.
 | `orbital_capture.py` | The capture problem on top of that propagation core. `relative_state` / `relative_speed` (ECI relative position and velocity), `capture_windows` (intervals where the capsule is simultaneously inside the grapple range **and** slow enough — a physically different condition from line-of-sight rendezvous), `velocity_matching_budget` (the grapple burn equals the relative-speed magnitude), `phasing_lead_angle` (λ = (π − n_t·T_t) mod 2π) and `phasing_wait_time` (first non-negative solution of φ(t) ≡ λ, returning `inf` when the geometry never changes). Imports `rendezvous_windows` for the shared propagator. |
 | `terrain_anomaly.py` | Concealed-lair detection. `build_volcano_scene` (fixed-seed Gaussian cone, a flat lair shelf cut into the flank, thermal lapse rate plus a noise floor), `thermal_anomaly_mask` (one-tailed standardized residual against a Gaussian-smoothed background — we look for *excess* heat), `terrain_anomaly_mask` (magnitude residual, because a lair may be a raised shelf *or* a cut depression), weighted fusion, and `detect_concealed_lair` (connected-component labelling of the thresholded fused map, ranked by peak fused score). |
 | `hidden_base_discovery.py` | Bayesian search over candidate sites. `terrain_weighted_priors` (P(c) ∝ 1 + β·max(0, z_terrain)), `gaussian_likelihood_ratio` (LR(z) = exp(μz/σ²), so a neutral cell maps to 1), `fuse_posteriors` (normalized product of prior and cue LRs), `rank_search_order` (descending posterior, ties broken by row then column so the plan is byte-reproducible), `discovery_probability_curve` (cumulative find probability), `expected_discovery_effort` (the **realised** rank of a known true site) and `posterior_expected_effort` (the **posterior-weighted** E[K] = Σ k·P(c_k), which assumes no ground truth). `build_discovery_scene` assembles priors plus thermal / terrain / RF cues into the posterior. |
-| `infiltration_planning.py` | Route planning under detection risk. `slope_magnitude` (gradient hypotenuse), `thermal_exposure_field` (positive thermal-anomaly risk, normalized), `guard_exposure_field` (per-cell count of guard posts with an unoccluded sight line, via a digital-elevation line-of-sight test), `combined_cost_field` (1 + weighted slope / thermal / guard, with an impassable-lava mask at ∞), `astar_path` (4-connected A* with an admissible Manhattan heuristic and an insertion counter for deterministic tie-breaking), `greedy_baseline_path` (a monotone greedy over the *same* search space), and `plan_infiltration` (the full route report including the cost reduction). |
+| `infiltration_planning.py` | Route planning under detection risk. `slope_magnitude` (gradient hypotenuse), `thermal_exposure_field` (positive thermal-anomaly risk, normalized), `guard_exposure_field` (per-cell count of guard posts with an unoccluded sight line, via a digital-elevation line-of-sight test), `combined_cost_field` (1 + weighted slope / thermal / guard, with an impassable-lava mask at ∞), `astar_path` (4-connected A* with an admissible Manhattan heuristic and an insertion counter for deterministic tie-breaking), `greedy_baseline_path` (a greedy depth-first walk over the *same* search space that retraces out of dead ends, so it always reaches the goal and its cost really is an upper bound on A*'s), and `plan_infiltration` (the full route report including the cost reduction). |
 | `emitter_localization.py` | Passive RF geolocation. `build_sensor_posts` (equally spaced sensor ring), `tdoa_measurements` (exact range differences dᵢ = ‖e − sᵢ‖ − ‖e − s₀‖), `time_differences_to_ranges` (the one place the speed of light is used — converting receiver seconds to metres), `localize_tdoa` (Taylor-series / Gauss–Newton on the normal equations; raises on singular geometry or non-convergence rather than returning a silent bad fix), `localization_error`. |
 | `pattern_of_life.py` | Base rhythm analysis. `build_weekly_activity_schedule` (inhomogeneous Poisson events by rejection sampling against a two-peak diurnal rate envelope), `hourly_histogram` (7×24), `daily_activity_profile` (mean over days), dominant-period detection by normalized autocorrelation, `peak_activity_windows` (contiguous hours above a percentile), tempo classification and duty cycle. `pattern_summary` returns the whole report. |
 
@@ -56,10 +56,17 @@ independently testable and importable without the protocol.
   scene, the week of activity, the thermal / terrain Z-maps, the discovery
   scene, the infiltration geometry, the emitter sensor ring — from named
   module-level constants and fixed-seed generators. It also fixes the one
-  *shared* ground truth: `lair_site` is the argmax of the fused anomaly
-  Z-scores, and the discovery scene, the infiltration goal and the emitter
-  position all use that same cell, so the seven capabilities are describing one
-  base rather than three slightly different ones.
+  *shared* ground truth — and keeps it strictly separate from any estimate.
+  `lair_site` and `lair_footprint` are the injected lair's centre and carved
+  extent, set by the scene generator's geometry (cone centre plus
+  `lair_offset_cells`) before any anomaly map exists; the discovery scene's
+  `true_cell`, the RF cue's source, the infiltration goal and the emitter
+  position all use that injected site, so the capabilities describe one base.
+  `detected_site` — the argmax of the fused anomaly Z-maps — is the detector's
+  *answer*, carried alongside under its own name. It is a different cell, and
+  `detector_offset_m` reports the gap. Earlier versions used the argmax as the
+  ground truth, which made "the posterior finds the true base" an identity
+  rather than a measurement; do not reintroduce that.
 - `solve_mission(scenario)` runs all seven capabilities and returns one results
   dict.
 

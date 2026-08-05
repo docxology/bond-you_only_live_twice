@@ -47,6 +47,8 @@ computed by `src/you_only_live_twice/manuscript_variables.py`.
 | Discovery RF source power | {{SETUP_DISCOVERY_RF_POWER}} |
 | Infiltration weights (slope / thermal / guard) | {{SETUP_INFIL_SLOPE_WEIGHT}} / {{SETUP_INFIL_THERMAL_WEIGHT}} / {{SETUP_INFIL_GUARD_WEIGHT}} |
 | TDOA sensor ring radius (m) / count | {{SETUP_EMITTER_RING_RADIUS_M}} / {{SETUP_EMITTER_SENSORS}} |
+| TDOA receiver timing jitter $\sigma_t$ (ns, 1σ) | {{SETUP_EMITTER_TIME_NOISE_NS}} |
+| Injected lair footprint (cells) | {{LAIR_FOOTPRINT_CELLS}} |
 
 ## Rendering pipeline
 

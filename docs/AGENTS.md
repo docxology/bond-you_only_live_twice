@@ -69,17 +69,38 @@ domain module → its test → scenario.solve_mission → mission/debrief eviden
 
 ## Traps specific to this package
 
-- **One shared ground truth.** `build_scenario()` derives `lair_site` from the
-  argmax of the fused anomaly Z-map and feeds that *same* cell to the discovery
-  scene, the infiltration goal and the emitter position. If you change the
-  scene generator, the anomaly weights, or the fusion, that cell can move — and
-  the capabilities will still all agree, which is the point. Do not hardcode a
-  cell anywhere downstream.
+- **Ground truth is injected, never detected.** `build_scenario()` takes
+  `lair_site` / `lair_footprint` from the scene generator's geometry — the cone
+  centre plus `lair_offset_cells`, fixed before any anomaly map is computed —
+  and feeds that injected site to the discovery scene's `true_cell`, the RF
+  cue, the infiltration goal and the emitter. The detector's own answer lives
+  separately as `detected_site`. **Do not** set the truth to the argmax of the
+  fused Z-maps: that was the original design, and it made
+  `DISCOVERY_*_RANK == 1` an arithmetic identity that no detection bug could
+  break. `test_scenario_discovery_truth_is_not_derived_from_the_cue_maps` fails
+  if it comes back. Equally, do not hardcode a cell anywhere downstream.
+- **Footprint recovery, not centroid recovery.** The anomaly peak and the
+  posterior peak land on the carved *rim*, ~5.7 cells from the injected centre.
+  The supported claim is that they fall inside the injected footprint (80 of
+  4096 cells). Anything asserting centre-cell recovery is false here —
+  `test_injected_centre_cell_is_not_recovered` pins it.
 - **Two different "effort" numbers.** `expected_discovery_effort` is the
   *realised* rank of a known true site; `posterior_expected_effort` is the
   posterior-weighted E[K] with no ground truth assumed. They are not
   interchangeable, and quoting the first as the second overstates what the
   search knows.
+- **The reported TDOA error must come from noisy timings.** Feeding
+  `localize_tdoa` the output of `tdoa_measurements` for the same point is a
+  round-trip identity of the forward model and returns 0.0 by construction.
+  `EMITTER_TIME_NOISE_S` perturbs the receiver-side arrival times first;
+  setting it to zero makes the reported accuracy meaningless, and
+  `test_full_mission_flow_is_deterministic` fails if it is not positive.
+- **The A\* reduction needs a goal-reaching baseline.** `greedy_baseline_path`
+  must finish the journey (it backtracks, and raises when the goal is
+  unreachable). A baseline that stops at a dead end reports the cost of a
+  shorter journey, which can be *below* the optimum — the reduction then goes
+  negative. `test_greedy_baseline_must_reach_the_goal_to_bound_astar` pins the
+  grid where that happens.
 - **The infiltration reduction is a fraction.** `INFILTRATION_REDUCTION` is in
   [0, 1]; `INFILTRATION_REDUCTION_PCT` is the percentage. Pair the right one
   with a `%` sign.

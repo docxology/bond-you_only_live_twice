@@ -18,10 +18,16 @@ Chan & Ho (1994) and in radar/EW texts (Skolnik 2001):
   measured arrival-time differences (seconds) to range differences (metres);
 * :func:`localization_error` — the achieved accuracy in metres.
 
-With noise-free measurements the solver converges to machine precision,
-proving the model is mathematically correct (the injected emitter is the
-fixed point); with added noise the error grows controllably, matching theory.
-The module is deterministic and infrastructure-free.
+What the noise-free case does and does not prove: feeding
+:func:`localize_tdoa` the output of :func:`tdoa_measurements` for the same
+point is a *round-trip identity of the forward model*. Convergence to machine
+precision shows the solver inverts the model it was handed — a real and
+necessary correctness check — but it is not a measurement, and it cannot
+corroborate the emitter's position against any other sensor. Only measurements
+carrying independent error (see ``EMITTER_TIME_NOISE_S`` in
+:mod:`you_only_live_twice.scenario`, which perturbs the receiver-side arrival
+times before the solve) produce an accuracy figure that could have come out
+worse. The module is deterministic and infrastructure-free.
 """
 
 from __future__ import annotations

@@ -11,8 +11,9 @@ reproducible mathematics:
    grappled and its velocity matched.
 3. **Where are they hiding?** A concealed base leaks heat and flattens terrain,
    even when painted to look like a mountain.
-4. **Does the evidence point to one site?** Bayesian fusion turns weak sensor
-   cues into a search plan.
+4. **Does the evidence point to one site?** Bayesian fusion turns heterogeneous
+   sensor cues into a search plan — and reports whether any single cue would
+   have sufficed, rather than assuming fusion was what found the base.
 5. **How do we get in?** A*, not guesswork, plans the infiltration route.
 6. **Where is their transmitter?** TDOA multilateration fixes the base's radio.
 7. **How do they operate?** A base keeps a rhythm; activity events reveal it.

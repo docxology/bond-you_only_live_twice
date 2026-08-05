@@ -39,9 +39,9 @@ written around properties that a broken implementation would actually fail:
 | Technique | Where it is used | What a failure would mean |
 | --- | --- | --- |
 | **Closed-form anchors** | `posterior_expected_effort` against a point mass (E[K]=1) and a uniform posterior (E[K]=(N+1)/2); a hand-computed asymmetric case | The estimator's algebra is wrong, not merely its plumbing |
-| **Round-trip inversion** | TDOA: place an emitter, generate exact range differences, convert seconds→metres, then solve — the Gauss–Newton fix must return the injected point to sub-millimetre accuracy | The forward model and the inverse solver disagree |
-| **Recovering an injected truth** | The lair shelf is cut into a known cell; the anomaly detector, the Bayesian posterior, the infiltration goal and the emitter fix must all land on that same cell | A capability has silently drifted onto a different "base" |
-| **Guaranteed inequalities** | A* cost ≤ greedy-baseline cost over the *same* 4-connected space, so the reported reduction is non-negative by optimality rather than by a weak comparator | Either the search is not optimal or the baseline is not in the same space |
+| **Round-trip inversion** | TDOA: place an emitter, generate exact range differences, convert seconds→metres, then solve — the Gauss–Newton fix must return the injected point to sub-millimetre accuracy. This proves solver/forward-model consistency **only**; it is an identity, not a measurement, and the mission's reported error comes from *noisy* timings instead | The forward model and the inverse solver disagree |
+| **Recovering an injected truth** | `test_pipeline_recovers_a_moved_injected_lair` carves the shelf at an offset chosen by the test, then requires the fused-anomaly peak *and* the Bayesian posterior peak to land inside **that** footprint (80 of 4096 cells). The truth is the scene-construction geometry, never a detector output | Detection has stopped tracking the injected lair, or a "truth" has been redefined as the estimate |
+| **Guaranteed inequalities** | A* cost ≤ greedy-baseline cost, which needs *both* that the baseline searches the same 4-connected space **and** that it reaches the goal — A* minimises over goal-reaching walks only. `test_greedy_baseline_must_reach_the_goal_to_bound_astar` pins a grid where a non-backtracking greedy stops early and reports a cheaper truncated walk | The search is not optimal, the baseline is not in the same space, or the baseline is not comparing the same journey |
 | **Monotonicity / normalization** | Posteriors sum to 1; discovery curves are cumulative and non-decreasing; priors are strictly positive | Probability mass is being created or destroyed |
 | **Determinism** | Calling a generator twice returns an identical result; `rank_search_order` ties break by (row, col) | An unseeded draw or a set/dict ordering leak has crept in |
 | **Error paths** | Non-2-D inputs, non-positive σ, mismatched shapes, impassable start/goal, degenerate TDOA geometry, non-convergence | A bad input silently produces a plausible-looking wrong answer |
@@ -51,13 +51,57 @@ written around properties that a broken implementation would actually fail:
 The infiltration result is a *relative* claim (A* beats a greedy baseline), and
 a relative claim is only as good as its comparator. The baseline is therefore
 deliberately not crippled: it searches the same 4-connected neighbourhood over
-the same cost field with the same goal heuristic. It loses because it is
-monotone and cannot backtrack, which is a real algorithmic difference — not
-because it was handed a worse map.
+the same cost field with the same goal heuristic, and it reaches the same goal.
+It loses because it commits to locally cheapest steps and pays to retrace out
+of dead ends, which is a real algorithmic difference — not because it was
+handed a worse map.
+
+A comparator can also be dishonest by being *too weak in the wrong direction*.
+An earlier version of `greedy_baseline_path` broke out of dead ends and
+returned a truncated walk. Its cost was then the cost of a shorter journey,
+which can be **below** the optimal cost of the full journey, so
+`cost_reduction` could go negative and the documented "non-negative by
+construction" guarantee was simply false. The fix was to make the baseline
+finish the journey, and the test now pins the exact grid that exposed it.
+
+### A ground truth may not be derived from the estimate
+
+The largest correctness risk in this package is not a wrong number but a
+circular one. If the "true" base location is defined as the argmax of the same
+anomaly maps the posterior is built from, then "the posterior ranks the true
+base first" is an arithmetic identity that no bug can break. This package
+carried exactly that defect: `build_scenario` set the true site to
+`argmax(0.5*thermal_z + 0.5*terrain_z)` and generated the RF cue at that same
+cell, so rank 1 was green by construction.
+
+The rule now is that ground truth comes from the *scene generator's*
+parameters — the cone centre plus a fixed lair offset, fixed before any sensor
+map exists — and every downstream truth (the discovery `true_cell`, the RF
+emitter, the infiltration goal, the TDOA emitter) is that injected site.
+`scenario["detected_site"]` keeps the detector's own answer under a separate
+name, and the gap between them is reported (`detector_offset_m`), not defined
+away. The consequence is that the honest result is weaker than the one this
+package used to print: the pipeline recovers the lair *footprint*, not its
+centre cell, and the manuscript now says so.
 
 ### Gates must be able to fail
 
-Two gates in this package could easily be vacuous, so both are built to bite:
+Four gates in this package could easily be vacuous, so all four are built to
+bite. The last two replace assertions that could not fail:
+
+- **The lair-recovery gate.** `test_detect_concealed_lair_recovers_injected_lair`
+  used to assert `top.contains(centre) or top.fused_score > 3.0`. The fused
+  score is 8.55, so the second disjunct held unconditionally and a detector
+  pointing anywhere on the map would still have passed. It now asserts that the
+  fused-score argmax is a member of the injected footprint set — and
+  `test_pipeline_recovers_a_moved_injected_lair` re-carves the lair somewhere
+  else and requires the peak to follow, so a detector returning a fixed cell
+  fails.
+- **The baseline-bound gate.** `test_greedy_baseline_must_reach_the_goal_to_bound_astar`
+  pins a 6×6 grid on which the previous non-backtracking greedy terminated at
+  `(2, 3)` with cost 5.0 against an optimal cost of 10.0 — a reduction of −1.0.
+  The assertion is that the baseline ends on the goal *and* costs at least the
+  optimum; before the fix it went red.
 
 - **The manuscript token gate.** `test_all_manuscript_tokens_are_generated`
   scans `manuscript/[0-9]*.md` for `{{TOKEN}}` references and fails if any is

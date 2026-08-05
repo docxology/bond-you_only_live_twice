@@ -105,11 +105,15 @@ def smooth2d(grid: np.ndarray, sigma: float) -> np.ndarray:
 
 
 def standardized_residual(measured: np.ndarray, model: np.ndarray) -> np.ndarray:
-    """Z-score of ``measured - model`` over the whole map.
+    """Z-score of ``measured - model`` against the *whole-map* residual spread.
 
-    The residual is divided by its robust standard deviation (the standard
-    deviation of the finite residuals), giving a map of how many sigma each
-    pixel stands above the local background model.
+    The residual ``measured - model`` is divided by ``np.std`` of the entire
+    residual map — a single global scale, not a per-pixel local one, and a
+    plain (non-robust) standard deviation that a large anomaly inflates. The
+    result is therefore how many map-wide sigma each pixel stands away from the
+    smoothed background, and a very strong anomaly slightly *depresses* its own
+    Z-score by raising the denominator. A degenerate (zero or non-finite) spread
+    returns an all-zero map.
     """
     residual = measured.astype(float) - model.astype(float)
     std = float(np.std(residual))
@@ -268,6 +272,7 @@ def build_volcano_scene(
     thermal_noise_kelvin: float = 1.5,
     terrain_noise_m: float = 6.0,
     seed: int = 1967,
+    lair_offset_cells: tuple[float, float] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic volcano-camouflage scene.
 
@@ -276,8 +281,16 @@ def build_volcano_scene(
     local thermal excess. Thermal background follows a lapse rate with altitude
     plus a fixed-seed noise floor.
 
+    ``lair_offset_cells`` is the ``(row, col)`` displacement of the lair centre
+    from the cone centre, in cells; it defaults to
+    ``(0.5*cone_radius_cells, 0.5*cone_radius_cells)`` (the lower-right flank).
+    It exists so a test can *move* the injected lair and confirm the detection
+    pipeline follows it, rather than returning a fixed cell.
+
     Returns a dict with ``elevation``, ``thermal`` (2-D grids), the ground-truth
-    ``lair_center`` (row, col) and ``lair_radius_cells``, and ``parameters``.
+    ``lair_center`` (row, col), ``lair_radius_cells``, ``lair_footprint`` (the
+    frozen set of carved cells — the ground-truth extent of the facility), and
+    ``parameters``.
     """
     if size <= 0:
         raise ValueError("size must be positive")
@@ -290,10 +303,12 @@ def build_volcano_scene(
     elevation = cone_height_m * np.exp(-(dist**2) / (2.0 * cone_radius_cells**2))
 
     # Concealed lair: flatten a circular shelf on the flank (terrain anomaly)
-    # by carving the cone down to a low plateau on the hot side.
-    # Lair offset toward the lower-right so it sits clearly on one flank.
-    lair_row = cy + cone_radius_cells * 0.5
-    lair_col = cx + cone_radius_cells * 0.5
+    # by carving the cone down to a low plateau on the hot side. The default
+    # offset puts it on the lower-right flank.
+    if lair_offset_cells is None:
+        lair_offset_cells = (cone_radius_cells * 0.5, cone_radius_cells * 0.5)
+    lair_row = cy + float(lair_offset_cells[0])
+    lair_col = cx + float(lair_offset_cells[1])
     lair_dist = np.sqrt((ys - lair_row) ** 2 + (xs - lair_col) ** 2)
     lair_mask = lair_dist <= lair_radius_cells
     # Carve: inside the lair, elevation drops to a low flat shelf.
@@ -311,16 +326,24 @@ def build_volcano_scene(
 
     terrain = carved + rng.normal(0.0, terrain_noise_m, (size, size))
 
+    footprint = frozenset(
+        (int(r), int(c)) for r, c in zip(carve_window_rows, carve_window_cols)
+    )
     return {
         "elevation": terrain,
         "thermal": thermal,
         "lair_center": (round(lair_row), round(lair_col)),
         "lair_radius_cells": float(lair_radius_cells),
+        "lair_footprint": footprint,
         "parameters": {
             "size": size,
             "cone_radius_cells": cone_radius_cells,
             "cone_height_m": cone_height_m,
             "lair_heat_kelvin": lair_heat_kelvin,
+            "lair_offset_cells": (
+                float(lair_offset_cells[0]),
+                float(lair_offset_cells[1]),
+            ),
             "seed": seed,
         },
         "lair_raw_cells": (carve_window_rows.tolist(), carve_window_cols.tolist()),

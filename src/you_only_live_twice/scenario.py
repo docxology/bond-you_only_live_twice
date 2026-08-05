@@ -20,15 +20,18 @@ from typing import Any
 import numpy as np
 
 from you_only_live_twice.emitter_localization import (
+    SPEED_OF_LIGHT,
     build_sensor_posts,
     localization_error,
     localize_tdoa,
     tdoa_measurements,
+    time_differences_to_ranges,
 )
 from you_only_live_twice.hidden_base_discovery import (
     build_discovery_scene,
     discovery_probability_curve,
     expected_discovery_effort,
+    fuse_posteriors,
     posterior_expected_effort,
     rank_search_order,
 )
@@ -53,6 +56,7 @@ from you_only_live_twice.terrain_anomaly import (
     M_PER_CELL,
     build_volcano_scene,
     detect_concealed_lair,
+    fuse_anomaly_scores,
     terrain_anomaly_mask,
     thermal_anomaly_mask,
 )
@@ -123,6 +127,12 @@ INFIL_LAVA_FRACTION = 0.92  #: cells above this fraction of cone height are lava
 #: Emitter localisation ring geometry (metres).
 EMITTER_RING_RADIUS_M = 25_000.0
 EMITTER_SENSOR_COUNT = 5
+#: Receiver timing jitter, seconds (10 ns, 1-sigma), applied to the arrival-time
+#: differences *before* they are converted to ranges and solved. Without it the
+#: reported localisation error is a round-trip identity of the forward model and
+#: is 0.0 by construction; with it, the error is a measurement that can come out
+#: worse.
+EMITTER_TIME_NOISE_S = 1.0e-8
 
 
 def _orbits() -> dict[str, Any]:
@@ -151,6 +161,16 @@ def build_scenario() -> dict[str, Any]:
     Returns a dict carrying ``orbits``, ``volcano``, ``activity``, the anomaly
     Z-maps ``thermal_z``/``terrain_z``, the discovery scene, the infiltration
     geometry, the emitter posts, ``seed`` and the computed ``input_hash``.
+
+    Ground truth vs. estimate. ``lair_site`` and ``lair_footprint`` are the
+    facility's *injected* centre and carved extent, fixed by
+    :func:`build_volcano_scene`'s geometry (cone centre plus
+    ``lair_offset_cells``) before any sensor map is computed. Every downstream
+    truth — the discovery scene's ``true_cell``, the RF emitter, the
+    infiltration goal, the TDOA emitter — is that injected site.
+    ``detected_site`` is separate: it is the anomaly detector's *estimate*, the
+    argmax of the fused Z-maps. The two are not the same cell, and the gap
+    between them is reported rather than defined away.
     """
     orbits = _orbits()
     volcano = build_volcano_scene(
@@ -169,14 +189,18 @@ def build_scenario() -> dict[str, Any]:
     _ignore_th, thermal_z = thermal_anomaly_mask(volcano["thermal"])
     _ignore_te, terrain_z = terrain_anomaly_mask(volcano["elevation"])
 
-    # The concealed base sits where its thermal + terrain signatures are
-    # strongest (the region's bounding-box centroid can sit a few cells off the
-    # temperature/terrain peak), so all downstream geometry shares one
-    # self-consistent "true site": the argmax of the fused anomaly Z-scores.
-    fused_peak = 0.5 * thermal_z + 0.5 * terrain_z
+    # Ground truth: the injected lair centre, fixed by the scene geometry and
+    # independent of every sensor map computed from that scene.
+    lair_site = (int(volcano["lair_center"][0]), int(volcano["lair_center"][1]))
+    lair_footprint: frozenset[tuple[int, int]] = volcano["lair_footprint"]
+
+    # Estimate: the anomaly detector's own answer — the argmax of the fused
+    # Z-maps. Deliberately *not* used as the ground truth; the offset between
+    # the two is a reported result (``detector_offset_m``).
+    fused_peak = fuse_anomaly_scores(thermal_z, terrain_z)
     size_grid = int(volcano["parameters"]["size"])
     _flat_idx = int(np.argmax(fused_peak))
-    lair_site = (_flat_idx // size_grid, _flat_idx % size_grid)
+    detected_site = (_flat_idx // size_grid, _flat_idx % size_grid)
 
     discovery = build_discovery_scene(
         volcano,
@@ -215,6 +239,11 @@ def build_scenario() -> dict[str, Any]:
         "sensor_posts": _emitter_posts(center_m),
         "emitter_m": emitter_m,
         "initial_guess": center_m,
+        "imagery_site_m": (
+            float(detected_site[0]) * M_PER_CELL,
+            float(detected_site[1]) * M_PER_CELL,
+        ),
+        "time_noise_s": EMITTER_TIME_NOISE_S,
     }
 
     return {
@@ -224,6 +253,8 @@ def build_scenario() -> dict[str, Any]:
         "thermal_z": thermal_z,
         "terrain_z": terrain_z,
         "lair_site": lair_site,
+        "lair_footprint": lair_footprint,
+        "detected_site": detected_site,
         "discovery": discovery,
         "infiltration": infiltration,
         "emitter": emitter,
@@ -270,15 +301,64 @@ def _solve_capture(orbits: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _solve_discovery(discovery: dict[str, Any]) -> dict[str, Any]:
+def _footprint_rank(
+    posterior: Any, footprint: frozenset[tuple[int, int]]
+) -> tuple[int, tuple[int, int]]:
+    """Rank at which a greedy posterior-order search first enters ``footprint``.
+
+    The facility occupies many cells, so "did the search find the base" is a
+    question about the footprint, not about one nominated centroid cell.
+    """
+    for rank, cell in enumerate(rank_search_order(posterior), start=1):
+        if cell in footprint:
+            return rank, cell
+    raise ValueError("the injected footprint is not in the search order")
+
+
+def _single_cue_footprint_ranks(
+    discovery: dict[str, Any], footprint: frozenset[tuple[int, int]]
+) -> dict[str, int]:
+    """Footprint rank each cue reaches *on its own* (prior x that one cue).
+
+    This is the number that decides whether fusion was actually necessary. If
+    every single-cue rank is already 1, the cues are individually decisive and
+    fusion sharpens the posterior rather than enabling the find.
+    """
+    priors = discovery["priors"]
+    out: dict[str, int] = {}
+    for name in ("thermal", "terrain", "rf"):
+        single = fuse_posteriors(priors, discovery[f"lr_{name}"])
+        out[name], _cell = _footprint_rank(single, footprint)
+    out["prior_only"], _cell = _footprint_rank(priors / float(priors.sum()), footprint)
+    return out
+
+
+def _solve_discovery(
+    discovery: dict[str, Any],
+    footprint: frozenset[tuple[int, int]],
+) -> dict[str, Any]:
     posterior = discovery["posterior"]
     true_cell = discovery["true_cell"]
     curve = discovery_probability_curve(posterior, max_cells=16)
     p_first_10 = float(curve[min(9, len(curve) - 1)]) if len(curve) else 0.0
     top_cell = rank_search_order(posterior)[0]
+    footprint_rank, _first_hit = _footprint_rank(posterior, footprint)
+    footprint_mass = float(sum(float(posterior[cell]) for cell in footprint))
+    peak_offset_cells = math.dist(top_cell, true_cell)
     return {
-        "true_posterior": round(float(posterior[true_cell]), 6),
-        "true_rank": int(expected_discovery_effort(posterior, true_cell)),
+        # Ground-truth-referenced measurements. ``footprint_*`` ask whether the
+        # search found the *facility*; ``centroid_*`` ask the stricter question
+        # of whether it landed on the injected centre cell. Both can fail.
+        "footprint_rank": footprint_rank,
+        "footprint_posterior": round(footprint_mass, 6),
+        "footprint_cells": len(footprint),
+        "top_cell_in_footprint": bool(top_cell in footprint),
+        "centroid_rank": int(expected_discovery_effort(posterior, true_cell)),
+        "centroid_posterior": float(f"{float(posterior[true_cell]):.3g}"),
+        "peak_offset_cells": round(peak_offset_cells, 2),
+        "peak_offset_m": round(peak_offset_cells * M_PER_CELL, 1),
+        "single_cue_footprint_ranks": _single_cue_footprint_ranks(discovery, footprint),
+        # Posterior-only statistics (no ground truth involved).
         "expected_effort_cells": round(posterior_expected_effort(posterior), 2),
         "prob_found_first_10": round(p_first_10, 4),
         "top_cell_posterior": round(float(posterior[top_cell]), 6),
@@ -312,21 +392,42 @@ def _solve_infiltration(
 
 
 def _solve_emitter(emitter: dict[str, Any]) -> dict[str, Any]:
+    """Localize the emitter from *noisy* receiver timings.
+
+    The receivers report arrival-time differences with a fixed-seed jitter of
+    ``time_noise_s`` before anything is converted to metres, so the reported
+    ``error_m`` is an achieved accuracy that could have come out worse — not the
+    0.0 that a noise-free forward-model round trip returns by construction.
+    """
     sensors = emitter["sensor_posts"]
     true = emitter["emitter_m"]
-    deltas = tdoa_measurements(sensors, true)
+    range_deltas = tdoa_measurements(sensors, true)
+    rng = np.random.default_rng(SEED)
+    time_deltas = range_deltas / SPEED_OF_LIGHT + rng.normal(
+        0.0, float(emitter["time_noise_s"]), range_deltas.shape
+    )
+    measured = time_differences_to_ranges(time_deltas)
 
     estimate = localize_tdoa(
         sensors,
-        deltas,
+        measured,
         x0=np.asarray(emitter["initial_guess"], dtype=float),
     )
     error = localization_error(estimate["estimate"], true)
+    imagery = emitter["imagery_site_m"]
     return {
         "error_m": round(error, 4),
         "iterations": int(estimate["iterations"]),
         "residual_norm": round(estimate["residual_norm"], 6),
         "num_sensors": len(sensors),
+        "time_noise_s": float(emitter["time_noise_s"]),
+        # Cross-modal comparison against the *imagery* estimate. The radio and
+        # imagery chains share no measurement, so this separation is a real
+        # disagreement between two modalities, not a round-trip identity.
+        "imagery_site_offset_m": round(
+            localization_error(estimate["estimate"], imagery), 1
+        ),
+        "truth_to_imagery_offset_m": round(math.dist(true, imagery), 1),
     }
 
 
@@ -340,9 +441,14 @@ def solve_mission(scenario: dict[str, Any]) -> dict[str, Any]:
     volcano = scenario["volcano"]
     rendezvous = _solve_rendezvous(orbits)
     capture = _solve_capture(orbits)
-    lair = _lair_results(volcano)
+    lair = _lair_results(
+        volcano,
+        scenario["detected_site"],
+        scenario["lair_site"],
+        scenario["lair_footprint"],
+    )
     pattern = pattern_summary(scenario["activity"])
-    discovery = _solve_discovery(scenario["discovery"])
+    discovery = _solve_discovery(scenario["discovery"], scenario["lair_footprint"])
     infiltration = _solve_infiltration(
         scenario["infiltration"], volcano, scenario["thermal_z"]
     )
@@ -384,9 +490,15 @@ def _solve_rendezvous(orbits: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _lair_results(volcano: dict[str, Any]) -> dict[str, Any]:
+def _lair_results(
+    volcano: dict[str, Any],
+    detected_site: tuple[int, int],
+    true_site: tuple[int, int],
+    footprint: frozenset[tuple[int, int]],
+) -> dict[str, Any]:
     regions, meta = detect_concealed_lair(volcano["thermal"], volcano["elevation"])
     top = regions[0] if regions else None
+    offset_cells = math.dist(detected_site, true_site)
     return {
         "num_candidates": len(regions),
         "top_fused_score": round(top.fused_score, 3) if top else None,
@@ -394,6 +506,13 @@ def _lair_results(volcano: dict[str, Any]) -> dict[str, Any]:
         "top_terrain_score": round(top.terrain_score, 3) if top else None,
         "top_area_cells": top.area_cells if top else 0,
         "num_components": meta["num_components"],
+        # Detector accuracy against the injected facility, measured rather than
+        # asserted: the detector's peak is not the injected centre cell.
+        "detected_cell": list(detected_site),
+        "detected_in_footprint": bool(detected_site in footprint),
+        "detector_offset_cells": round(offset_cells, 2),
+        "detector_offset_m": round(offset_cells * M_PER_CELL, 1),
+        "footprint_cells": len(footprint),
     }
 
 
@@ -453,6 +572,7 @@ def _scenario_descriptor() -> dict[str, Any]:
         "emitter": {
             "ring_radius_m": EMITTER_RING_RADIUS_M,
             "sensor_count": EMITTER_SENSOR_COUNT,
+            "time_noise_s": EMITTER_TIME_NOISE_S,
         },
     }
 

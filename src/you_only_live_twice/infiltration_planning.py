@@ -11,14 +11,21 @@ of thermal signature. This module plans that route with real algorithms:
   field (heap-based, tie-broken by insertion order so the result is
   reproducible);
 * :func:`greedy_baseline_path` — the same 4-connected search space negotiated
-  by a monotone greedy (always step to the cheapest-looking unvisited
-  neighbour), giving the *unplanned* route A* is measured against;
+  by a greedy depth-first walk (always step to the cheapest-looking unvisited
+  neighbour; retrace when it dead-ends), giving the *unplanned* route A* is
+  measured against;
 * :func:`plan_infiltration` — the full route report: optimal cost, path length,
   thermal exposure, and the exposure/cost reduction over the baseline.
 
-A* optimality guarantees ``optimal_cost <= baseline_cost`` (and hence a
-non-negative reduction) because both candidates live in the same 4-connected
-space. The module is infrastructure-free and deterministic.
+A* optimality gives ``optimal_cost <= baseline_cost`` (and hence a non-negative
+reduction) only because the baseline is a walk that *actually reaches the
+goal* in the same 4-connected space: A* minimises over all such walks, and
+every step cost is at least 1, so any goal-reaching walk costs at least as
+much. A baseline that stopped short of the goal would carry no such guarantee —
+its cost would simply be the cost of a shorter journey — which is why
+:func:`greedy_baseline_path` backtracks out of dead ends and raises when the
+goal is unreachable rather than returning a truncated route. The module is
+infrastructure-free and deterministic.
 """
 
 from __future__ import annotations
@@ -254,37 +261,59 @@ def greedy_baseline_path(
     start: tuple[int, int],
     goal: tuple[int, int],
 ) -> AStarResult:
-    """A monotone greedy route over the same 4-connected space.
+    """A greedy depth-first walk over the same 4-connected space.
 
     Steps to the unvisited neighbour with the lowest total estimate
-    ``move_cost + Manhattan(neighbour, goal)``, until it reaches the goal or
-    gets stuck. Because it is not globally optimal, its cost is an upper bound
-    for A* — the basis of the reported reduction.
+    ``move_cost + Manhattan(neighbour, goal)``. On a dead end it *retraces* one
+    cell along the walk it came by — paying that cell's cost again, exactly as
+    an agent physically doubling back would — and tries the next-best branch
+    from there. It therefore always reaches the goal when the goal is reachable,
+    and raises ``ValueError`` when it is not.
+
+    That termination property is what makes the reported reduction meaningful:
+    the returned ``cost`` is the cost of a real goal-reaching walk in the same
+    space A* minimises over, so ``astar_path(...).cost <= greedy.cost`` holds.
+    An earlier version broke out of dead ends and returned a truncated route;
+    its cost was then the cost of a *shorter journey*, which can be lower than
+    the optimal cost of the full journey, making the reduction negative.
+
+    The returned ``path`` is the walk in traversal order and may repeat cells
+    where the search backtracked; ``expanded`` counts the steps taken.
     """
     if cost_field.ndim != 2:
         raise ValueError("cost_field must be 2-D")
     rows, cols = cost_field.shape
-    visited: set[tuple[int, int]] = set()
-    path: list[tuple[int, int]] = [start]
+    if math.isinf(float(cost_field[start])):
+        raise ValueError("start cell is impassable")
+    if math.isinf(float(cost_field[goal])):
+        raise ValueError("goal cell is impassable")
+    visited: set[tuple[int, int]] = {start}
+    branch: list[tuple[int, int]] = [start]  # the un-retraced stem of the walk
+    path: list[tuple[int, int]] = [start]  # every cell entered, in order
     cost = 0.0
-    current = start
 
     def h(cell: tuple[int, int]) -> float:
         return float(abs(cell[0] - goal[0]) + abs(cell[1] - goal[1]))
 
-    while current != goal:
-        visited.add(current)
+    while branch[-1] != goal:
+        current = branch[-1]
         candidates = [
             (n, float(cost_field[n]) + h(n))
             for n in _neighbors(current, (rows, cols))
             if n not in visited and not math.isinf(float(cost_field[n]))
         ]
-        if not candidates:
-            break
-        best = min(candidates, key=lambda pair: (pair[1], pair[0]))[0]
+        if candidates:
+            best = min(candidates, key=lambda pair: (pair[1], pair[0]))[0]
+            visited.add(best)
+            branch.append(best)
+        else:
+            # Dead end: retrace one cell, paying to walk back over it.
+            branch.pop()
+            if not branch:
+                raise ValueError("no path exists from start to goal")
+            best = branch[-1]
         cost += float(cost_field[best])
         path.append(best)
-        current = best
     return AStarResult(path=tuple(path), cost=cost, expanded=len(path))
 
 
@@ -305,6 +334,10 @@ def plan_infiltration(
     ``expanded``, ``thermal_exposure`` (sum of thermal risk along the optimal
     path), ``baseline_cost``, ``cost_reduction`` (1 - optimal/baseline) and
     ``baseline_path``.
+
+    Both routes end on ``goal`` — :func:`greedy_baseline_path` raises rather
+    than returning a truncated walk — so ``cost_reduction`` is non-negative by
+    A* optimality, not by a favourable comparator.
     """
     cost_field = combined_cost_field(
         elevation,

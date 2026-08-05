@@ -24,25 +24,40 @@ from you_only_live_twice.scenario import build_scenario
 from you_only_live_twice.terrain_anomaly import build_volcano_scene
 
 
-@pytest.fixture(scope="module")
-def _scene() -> dict:
+def _discovery_scene(offset: tuple[float, float] | None = None) -> dict:
+    """Build a discovery scene whose truth comes from the scene generator.
+
+    The ``true_cell`` is the *injected* lair centre — fixed by the cone centre
+    plus ``lair_offset_cells`` before any anomaly map exists — never the argmax
+    of the maps the posterior consumes. The returned dict carries the volcano
+    scene alongside, so tests can reference the injected footprint.
+    """
     from you_only_live_twice.terrain_anomaly import (
         terrain_anomaly_mask,
         thermal_anomaly_mask,
     )
 
-    volcano = build_volcano_scene(seed=1967)
+    volcano = build_volcano_scene(seed=1967, lair_offset_cells=offset)
     _t, thermal_z = thermal_anomaly_mask(volcano["thermal"])
     _d, terrain_z = terrain_anomaly_mask(volcano["elevation"])
-    # The concealed base sits where its thermal + terrain signatures peak (the
-    # same semantics the mission scenario uses), so the cue fusion is coherent.
-    fused_peak = 0.5 * thermal_z + 0.5 * terrain_z
-    size_grid = fused_peak.shape[0]
-    flat_idx = int(np.argmax(fused_peak))
-    true_cell = (flat_idx // size_grid, flat_idx % size_grid)
-    return build_discovery_scene(
+    true_cell = (int(volcano["lair_center"][0]), int(volcano["lair_center"][1]))
+    scene = build_discovery_scene(
         volcano, thermal_z, terrain_z, seed=1967, true_cell=true_cell
     )
+    scene["volcano"] = volcano
+    return scene
+
+
+@pytest.fixture(scope="module")
+def _scene() -> dict:
+    return _discovery_scene()
+
+
+def _footprint_rank(posterior, footprint) -> int:
+    for rank, cell in enumerate(rank_search_order(posterior), start=1):
+        if cell in footprint:
+            return rank
+    raise AssertionError("footprint never appears in the search order")
 
 
 def test_terrain_weighted_priors_normalize() -> None:
@@ -176,19 +191,92 @@ def test_posterior_expected_effort_is_bounded_by_the_realised_rank_regime(
     assert expected < 1.5
 
 
-def test_canonical_scene_isolates_true_base(_scene: dict) -> None:
+def test_canonical_scene_isolates_the_injected_footprint(_scene: dict) -> None:
+    """What is actually established: footprint-level recovery, not centroid.
+
+    The truth here is the injected lair, not the argmax of the maps the
+    posterior is built from, so this is a measurement. It is also a hard
+    target: the footprint is 80 of 4096 cells (~2 %).
+    """
     post = _scene["posterior"]
-    true = _scene["true_cell"]
-    # The Bayesian fusion ranks the true base first with near-certainty.
-    assert rank_search_order(post)[0] == true
-    assert float(post[true]) > 0.9
-    assert expected_discovery_effort(post, true) == 1.0
+    footprint = _scene["volcano"]["lair_footprint"]
+    assert 0 < len(footprint) < post.size / 10
+
+    assert rank_search_order(post)[0] in footprint
+    assert _footprint_rank(post, footprint) == 1
+    # The manuscript reports this mass to 6 dp and says the remainder falls
+    # below the reported precision; pin exactly that, not a vaguer bound.
+    assert sum(float(post[c]) for c in footprint) > 1.0 - 5e-7
     curve = discovery_probability_curve(post, max_cells=10)
     assert float(curve[9]) >= 0.99
 
 
-def test_scenario_discovery_consistent_with_mission() -> None:
+def test_injected_centre_cell_is_not_recovered(_scene: dict) -> None:
+    """The stricter centroid claim fails, and is pinned so it cannot be re-made.
+
+    Both the anomaly maps and the posterior peak on the carved rim, not the
+    centroid. Recording it here keeps the manuscript's weaker (true) claim
+    honest: any change that made the centroid rank 1 would have to update this
+    test deliberately.
+    """
+    post = _scene["posterior"]
+    true = _scene["true_cell"]
+    assert rank_search_order(post)[0] != true
+    assert expected_discovery_effort(post, true) > 1.0
+    assert float(post[true]) < 1e-6
+
+
+@pytest.mark.parametrize("offset", [(-10.0, -10.0), (12.0, -6.0)])
+def test_posterior_follows_a_moved_injected_lair(
+    offset: tuple[float, float],
+) -> None:
+    """Positive control for the discovery chain: move the truth, it must follow.
+
+    A posterior whose "true cell" was defined as its own argmax would pass any
+    single-scene check; it cannot pass this one.
+    """
+    scene = _discovery_scene(offset)
+    footprint = scene["volcano"]["lair_footprint"]
+    post = scene["posterior"]
+    assert rank_search_order(post)[0] in footprint
+    assert sum(float(post[c]) for c in footprint) > 0.9
+    assert not (footprint & build_volcano_scene(seed=1967)["lair_footprint"])
+
+
+def test_single_cue_ranks_show_fusion_was_not_necessary(_scene: dict) -> None:
+    """Each cue alone already ranks the footprint first — so say that, not 'weak cues'.
+
+    If this ever fails because a cue stops being individually decisive, the
+    manuscript's "fusion was not what found the base" wording must change too.
+    """
+    footprint = _scene["volcano"]["lair_footprint"]
+    priors = _scene["priors"]
+    for name in ("thermal", "terrain", "rf"):
+        single = fuse_posteriors(priors, _scene[f"lr_{name}"])
+        assert _footprint_rank(single, footprint) == 1, name
+    assert _footprint_rank(priors / float(priors.sum()), footprint) == 1
+
+
+def test_scenario_discovery_truth_is_not_derived_from_the_cue_maps() -> None:
+    """The scenario's truth is the injected lair; the detector's answer differs.
+
+    This is the anti-circularity gate. It fails the moment ``build_scenario``
+    goes back to defining the true site as the argmax of the fused Z-maps,
+    because then truth and estimate would coincide.
+    """
     scenario = build_scenario()
     post = scenario["discovery"]["posterior"]
     assert float(post.sum()) == pytest.approx(1.0)
-    assert scenario["discovery"]["true_cell"] in rank_search_order(post)[:3]
+
+    truth = scenario["lair_site"]
+    assert truth == tuple(scenario["volcano"]["lair_center"])
+    assert scenario["discovery"]["true_cell"] == truth
+    # The detector's estimate is tracked separately and is a different cell.
+    assert scenario["detected_site"] != truth
+    assert scenario["detected_site"] in scenario["lair_footprint"]
+    # Every downstream "truth" is the injected site, not the estimate.
+    assert scenario["infiltration"]["goal"] == truth
+    assert scenario["emitter"]["emitter_m"] == (
+        float(truth[0]) * 1000.0,
+        float(truth[1]) * 1000.0,
+    )

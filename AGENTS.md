@@ -31,7 +31,8 @@ mapping), `docs/testing_philosophy.md` (what a test here must prove).
 - `hidden_base_discovery.py` — Bayesian cue fusion (thermal/terrain/RF),
   posterior map, deterministic search order, effort & discovery curve.
 - `infiltration_planning.py` — slope/thermal/guard cost fields, A* route vs a
-  same-space greedy baseline (non-negative reduction).
+  same-space greedy baseline that also *reaches the goal* (it backtracks out of
+  dead ends), which is what makes the reduction non-negative.
 - `emitter_localization.py` — TDOA hyperbolic multilateration via Gauss–Newton.
 - `pattern_of_life.py` — Poisson diurnal activity model, weekly/daily
   histograms, autocorrelation periodicity, peak windows, tempo, duty cycle.

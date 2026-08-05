@@ -203,7 +203,12 @@ class MissionProvider:
                 "a concealed lair leaks heat and flattens terrain, even when camouflaged",
                 "rendezvous windows are driven by relative orbital phase, not absolute motion",
                 "orbital capture is a phasing problem: wait for the right lead angle, then match velocity",
-                "a hidden base is found by fusing weak sensors, not by any single one",
+                (
+                    "whether cue fusion was *necessary* is an empirical question: "
+                    "score each cue alone before claiming the base was found by "
+                    "fusing weak sensors (this run's single-cue ranks are in the "
+                    "evidence notes)"
+                ),
                 "a base's pattern of life is best read as a weekly, diurnal rhythm",
                 "deterministic provenance makes every outcome independently auditable",
                 *tuple(notes),
@@ -228,12 +233,31 @@ def _evidence_notes(results: dict[str, Any]) -> tuple[str, ...]:
         )
     lair = results.get("concealed_lair", {})
     if lair.get("top_fused_score"):
-        notes.append(f"top lair candidate fused score {lair['top_fused_score']}")
-    discovery = results.get("hidden_base_discovery", {})
-    if discovery.get("true_rank"):
         notes.append(
-            f"hidden base localized at rank {discovery['true_rank']} of "
-            f"{discovery['num_candidate_cells']} candidate sites"
+            f"top lair candidate fused score {lair['top_fused_score']}; the "
+            f"detector's peak sits {lair.get('detector_offset_m')} m from the "
+            f"injected facility centre"
+        )
+    discovery = results.get("hidden_base_discovery", {})
+    if discovery.get("footprint_rank"):
+        notes.append(
+            f"greedy posterior search reaches the injected {discovery['footprint_cells']}"
+            f"-cell lair footprint at rank {discovery['footprint_rank']} of "
+            f"{discovery['num_candidate_cells']} candidate sites; the injected centre "
+            f"cell itself ranks {discovery['centroid_rank']}"
+        )
+    single = discovery.get("single_cue_footprint_ranks") or {}
+    if single:
+        best = ", ".join(f"{name} {rank}" for name, rank in sorted(single.items()))
+        sufficient = [name for name, rank in single.items() if rank == 1]
+        notes.append(
+            f"single-cue footprint ranks ({best}) — "
+            + (
+                f"{len(sufficient)} cue(s) already rank the footprint first alone, "
+                "so fusion was not what found the base"
+                if sufficient
+                else "no single cue finds the footprint first; fusion was necessary"
+            )
         )
     infiltration = results.get("infiltration", {})
     if infiltration.get("cost_reduction"):

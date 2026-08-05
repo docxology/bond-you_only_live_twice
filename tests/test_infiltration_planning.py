@@ -140,6 +140,74 @@ def test_greedy_baseline_is_an_upper_bound() -> None:
     assert greedy.cost > 0.0
 
 
+#: A 6x6 obstacle field on which a greedy that *abandons* dead ends walks into
+#: the pocket at (2, 3) and stops, having paid 5.0 against an optimal 10.0 —
+#: i.e. a "cost reduction" of -1.0. Found by exhaustive search over random
+#: blockings; it is the concrete counterexample to the "non-negative by
+#: construction" guarantee the docs used to state.
+_DEAD_END_BLOCKS = (
+    (0, 3),
+    (0, 5),
+    (1, 3),
+    (1, 5),
+    (2, 4),
+    (2, 5),
+    (3, 1),
+    (3, 2),
+    (3, 3),
+    (4, 2),
+)
+
+
+def _dead_end_field() -> np.ndarray:
+    cost = np.ones((6, 6))
+    for r, c in _DEAD_END_BLOCKS:
+        cost[r, c] = np.inf
+    return cost
+
+
+def test_greedy_baseline_must_reach_the_goal_to_bound_astar() -> None:
+    """The bound needs a goal-reaching baseline, not merely a same-space one.
+
+    A* minimises over walks that *finish* the journey. A baseline that stops at
+    a dead end reports the cost of a shorter journey, which can be below the
+    optimal cost of the full one — here 5.0 against 10.0, a reduction of -1.0.
+    A non-backtracking greedy fails this test; the shipped one retraces.
+    """
+    cost = _dead_end_field()
+    start, goal = (0, 0), (5, 5)
+    optimal = astar_path(cost, start, goal)
+    greedy = greedy_baseline_path(cost, start, goal)
+
+    assert greedy.path[0] == start
+    assert greedy.path[-1] == goal, "baseline abandoned the journey"
+    assert greedy.cost >= optimal.cost
+    assert 1.0 - optimal.cost / greedy.cost >= 0.0
+    # The pocket really is on the greedy's route, so the dead end is exercised
+    # rather than incidentally avoided.
+    assert (2, 3) in greedy.path
+    # Retracing means a cell is entered more than once.
+    assert len(greedy.path) > len(set(greedy.path))
+
+
+def test_greedy_baseline_raises_when_the_goal_is_unreachable() -> None:
+    """Unreachable goal must raise, never return a truncated 'cheaper' walk."""
+    cost = np.ones((5, 5))
+    cost[2, :] = np.inf
+    with pytest.raises(ValueError, match="no path exists"):
+        greedy_baseline_path(cost, (0, 0), (4, 4))
+    with pytest.raises(ValueError):
+        greedy_baseline_path(np.zeros(4), (0, 0), (1, 1))
+    blocked = np.ones((4, 4))
+    blocked[0, 0] = np.inf
+    with pytest.raises(ValueError, match="start cell is impassable"):
+        greedy_baseline_path(blocked, (0, 0), (3, 3))
+    blocked2 = np.ones((4, 4))
+    blocked2[3, 3] = np.inf
+    with pytest.raises(ValueError, match="goal cell is impassable"):
+        greedy_baseline_path(blocked2, (0, 0), (3, 3))
+
+
 def test_canonical_scene_plans_a_route_with_reduction() -> None:
     scenario = build_scenario()
     volcano = scenario["volcano"]
@@ -156,7 +224,11 @@ def test_canonical_scene_plans_a_route_with_reduction() -> None:
     assert plan["optimal_path"][-1] == infil["goal"]
     assert plan["path_length"] > 0
     assert plan["baseline_cost"] > 0.0
-    # A* optimality guarantees a non-negative reduction (same search space).
+    # The reduction is non-negative by A* optimality only because the baseline
+    # completes the same journey — assert that precondition, don't assume it.
+    assert plan["baseline_path"][0] == infil["start"]
+    assert plan["baseline_path"][-1] == infil["goal"]
+    assert plan["baseline_cost"] >= plan["optimal_cost"]
     assert plan["cost_reduction"] >= -1e-9
     assert plan["thermal_exposure"] >= 0.0
     assert AStarResult(

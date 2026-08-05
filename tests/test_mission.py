@@ -76,11 +76,22 @@ def test_full_mission_flow_is_deterministic() -> None:
     assert lair["num_candidates"] >= 0
     disc = outcome.results["hidden_base_discovery"]
     assert disc["num_candidate_cells"] > 0
-    assert disc["true_rank"] >= 1
+    assert disc["footprint_rank"] >= 1
+    # Truth and estimate are reported separately; the centroid is not recovered
+    # and the outcome must keep saying so rather than collapsing them.
+    assert disc["centroid_rank"] > disc["footprint_rank"]
+    assert disc["peak_offset_m"] > 0.0
+    lair_res = outcome.results["concealed_lair"]
+    assert lair_res["detected_in_footprint"] is True
+    assert lair_res["detector_offset_m"] > 0.0
     infil = outcome.results["infiltration"]
     assert infil["cost_reduction"] >= -1e-9
     emit = outcome.results["emitter_localization"]
-    assert emit["error_m"] >= 0.0
+    # A noise-free TDOA round trip returns 0.0 by construction; the mission
+    # solves noisy timings, so the error must be a real positive quantity.
+    assert emit["time_noise_s"] > 0.0
+    assert emit["error_m"] > 0.0
+    assert emit["imagery_site_offset_m"] > 0.0
     pat = outcome.results["pattern_of_life"]
     assert pat["num_events"] > 0
     assert pat["tempo"] in {"low", "medium", "high"}
@@ -147,17 +158,47 @@ def test_evidence_notes_branches() -> None:
         {
             "rendezvous": {"num_windows": 2, "first_window_start_s": 100.0},
             "capture": {"num_windows": 1, "grapple_delta_v_m_s": 900.0},
-            "concealed_lair": {"top_fused_score": 5.0},
-            "hidden_base_discovery": {"true_rank": 1, "num_candidate_cells": 4096},
+            "concealed_lair": {"top_fused_score": 5.0, "detector_offset_m": 5656.9},
+            "hidden_base_discovery": {
+                "footprint_rank": 1,
+                "footprint_cells": 80,
+                "centroid_rank": 80,
+                "num_candidate_cells": 4096,
+                "single_cue_footprint_ranks": {"thermal": 1, "terrain": 1, "rf": 1},
+            },
             "infiltration": {"cost_reduction": 0.3},
             "pattern_of_life": {"tempo": "high"},
         }
     )
-    assert len(notes) == 6
+    assert len(notes) == 7
     assert any("2 rendezvous" in n for n in notes)
     assert any("capture window" in n for n in notes)
     assert any("rank 1 of 4096" in n for n in notes)
+    assert any("centre cell itself ranks 80" in n for n in notes)
+    assert any("5656.9 m from the injected facility centre" in n for n in notes)
+    assert any("fusion was not what found the base" in n for n in notes)
     assert any("cuts cost by 30.0%" in n for n in notes)
+
+
+def test_evidence_notes_reports_fusion_as_necessary_when_it_is() -> None:
+    """The single-cue note is derived from the ranks, not stapled on.
+
+    Feeding ranks where no cue is individually decisive must flip the wording,
+    which is what makes the claim in the debrief a report rather than a slogan.
+    """
+    notes = _evidence_notes(
+        {
+            "hidden_base_discovery": {
+                "footprint_rank": 3,
+                "footprint_cells": 80,
+                "centroid_rank": 9,
+                "num_candidate_cells": 4096,
+                "single_cue_footprint_ranks": {"thermal": 7, "terrain": 4, "rf": 12},
+            },
+        }
+    )
+    assert any("fusion was necessary" in n for n in notes)
+    assert not any("fusion was not what found" in n for n in notes)
 
 
 def test_gadget_registry_registration() -> None:

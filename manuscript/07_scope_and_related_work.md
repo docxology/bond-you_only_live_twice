@@ -12,13 +12,24 @@ single fixed scenario. Its scope is deliberately bounded:
   changes and finite-burn effects are not modelled.
 * **Lair detection** scores a synthetic volcano-camouflage scene. It
   demonstrates the anomaly-scoring *method* on real synthetic data; it is not a
-  claim about any real imagery.
+  claim about any real imagery. What is established is that the fused peak
+  falls inside the injected lair *footprint*; the peak sits
+  {{LAIR_DETECTOR_OFFSET_M}} m from the injected centre cell, so centre-cell
+  localization is **not** established.
 * **Hidden-base discovery** uses a naive-Bayes fusion of Gaussian sensor cues;
-  it does not model correlated or missing measurements.
+  it does not model correlated or missing measurements. In this scene the cues
+  are not weak — every single cue ranks the footprint first on its own
+  ({{DISCOVERY_SINGLE_CUE_RANKS}}) — so the results demonstrate consistent
+  multi-cue evidence, not weak-signal fusion. Detection performance across
+  varied camouflage, noise levels and lair geometries would need a swept
+  ensemble of scenes; one scenario cannot supply it.
 * **Infiltration planning** is a static 4-connected A* over a fixed cost
   surface; it does not model dynamic guards or replanning.
-* **Emitter localization** solves noise-free/lightly-noised TDOA; heavy
-  multipath and timing bias are out of scope.
+* **Emitter localization** solves TDOA with a single Gaussian timing-jitter
+  level ({{EMITTER_TIME_NOISE_NS}} ns, 1σ) at one emitter–sensor geometry;
+  heavy multipath, timing bias, and any characterization of error versus
+  geometry or noise level are out of scope. The reported
+  {{EMITTER_ERROR_M}} m is one operating point, not an accuracy envelope.
 * **Pattern of life** uses a diurnal-rate Poisson model of activity. It
   recovers the model's injected rhythm; it does not claim general time-series
   universality.

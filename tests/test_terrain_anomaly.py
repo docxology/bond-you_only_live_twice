@@ -8,6 +8,8 @@ validation branch is exercised.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -106,21 +108,84 @@ def test_build_volcano_scene_is_deterministic_and_contains_lair() -> None:
 
 
 def test_detect_concealed_lair_recovers_injected_lair() -> None:
+    """The fused peak must land in the injected footprint — no score fallback.
+
+    The previous form of this assertion was
+    ``top.contains(centre) or top.fused_score > 3.0``. The fused score is 8.55,
+    so the second disjunct held no matter where the detector pointed, and the
+    assertion could not fail on the property it advertised. The binding
+    statement is membership of the *injected* carved cell set: 80 of 4096
+    cells, so a detector pointing anywhere else fails.
+    """
     scene = build_volcano_scene(seed=1967)
     regions, meta = detect_concealed_lair(scene["thermal"], scene["elevation"])
     assert meta["num_components"] > 0
     assert regions  # at least one candidate
     top = regions[0]
     assert isinstance(top, LairRegion)
-    # The top candidate must be near the injected lair center and score high.
-    center_row, center_col = scene["lair_center"]
-    assert top.contains(center_row, center_col) or top.fused_score > 3.0
+
+    footprint = scene["lair_footprint"]
+    assert 0 < len(footprint) < scene["thermal"].size / 10  # a hard target
+
+    fused = meta["fused_score"]
+    flat = int(np.argmax(fused))
+    peak = (flat // fused.shape[1], flat % fused.shape[1])
+    assert peak in footprint, f"fused peak {peak} is outside the injected lair"
+    # The top-ranked region must be the one holding that peak.
+    assert top.contains(*peak)
+    assert top.fused_score == pytest.approx(float(fused[peak]))
+
     # Regions are sorted by descending fused score.
     scores = [r.fused_score for r in regions]
     assert scores == sorted(scores, reverse=True)
     # meta carries the maps.
     assert meta["fused_score"].shape == scene["thermal"].shape
     assert meta["thermal_z"].shape == scene["thermal"].shape
+
+
+def test_detected_peak_is_not_the_injected_centre_cell() -> None:
+    """The detector recovers the footprint, not the centroid — pinned honestly.
+
+    A high-pass anomaly score peaks on the rim of the carved shelf, where the
+    discontinuity against the smooth background is largest. This test records
+    the actual behaviour so no document can quietly claim centre-cell recovery.
+    """
+    scene = build_volcano_scene(seed=1967)
+    _regions, meta = detect_concealed_lair(scene["thermal"], scene["elevation"])
+    fused = meta["fused_score"]
+    flat = int(np.argmax(fused))
+    peak = (flat // fused.shape[1], flat % fused.shape[1])
+    centre = tuple(scene["lair_center"])
+    assert peak in scene["lair_footprint"]
+    assert peak != centre
+    # The peak sits on the carved rim: inside the shelf, but a real distance
+    # from its (rounded) centre — bounded by the shelf's own diameter.
+    assert 0.0 < math.dist(peak, centre) <= 2.0 * scene["lair_radius_cells"]
+
+
+@pytest.mark.parametrize(
+    "offset",
+    [(-10.0, -10.0), (12.0, -6.0), (0.0, 14.0)],
+)
+def test_pipeline_recovers_a_moved_injected_lair(
+    offset: tuple[float, float],
+) -> None:
+    """Positive control: move the injected lair, the detector must follow it.
+
+    This is what makes the recovery claim falsifiable. A detector that returned
+    a fixed cell — or one whose "truth" was defined as its own argmax — would
+    pass the single-scene test and fail here.
+    """
+    scene = build_volcano_scene(seed=1967, lair_offset_cells=offset)
+    footprint = scene["lair_footprint"]
+    _regions, meta = detect_concealed_lair(scene["thermal"], scene["elevation"])
+    fused = meta["fused_score"]
+    flat = int(np.argmax(fused))
+    peak = (flat // fused.shape[1], flat % fused.shape[1])
+    assert peak in footprint, f"offset {offset}: peak {peak} left the injected lair"
+    # And it is a genuinely different lair from the default scene's.
+    default_footprint = build_volcano_scene(seed=1967)["lair_footprint"]
+    assert not (footprint & default_footprint)
 
 
 def test_detect_concealed_lair_min_cells_filters() -> None:
