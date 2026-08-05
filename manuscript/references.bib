@@ -1,62 +1,150 @@
+% VOLCANO (you_only_live_twice) bibliography.
+% Every entry is a real, checkable publication that directly supports a model
+% implemented in src/you_only_live_twice/. Do not add a reference unless you
+% have verified the author, title and year.
+
+% --- Astrodynamics: propagation, Hohmann transfer, phasing -------------------
+
 @book{vallado2013,
-  author = {Vallado, David A.},
-  title = {Fundamentals of Astrodynamics and Applications},
-  edition = {4th},
+  author    = {Vallado, David A.},
+  title     = {Fundamentals of Astrodynamics and Applications},
+  edition   = {4th},
   publisher = {Microcosm Press},
-  address = {Hawthorne, CA},
-  year = {2013}
+  address   = {Hawthorne, CA},
+  year      = {2013}
 }
 
 @book{bate1971,
-  author = {Bate, Roger R. and Mueller, Donald D. and White, Jerry E.},
-  title = {Fundamentals of Astrodynamics},
+  author    = {Bate, Roger R. and Mueller, Donald D. and White, Jerry E.},
+  title     = {Fundamentals of Astrodynamics},
   publisher = {Dover Publications},
-  year = {1971}
+  address   = {New York},
+  year      = {1971}
 }
 
 @book{wertz2011,
-  editor = {Wertz, James R. and Everett, David F. and Puschell, Jeffery J.},
-  title = {Space Mission Engineering: The New SMAD},
+  editor    = {Wertz, James R. and Everett, David F. and Puschell, Jeffery J.},
+  title     = {Space Mission Engineering: The New SMAD},
   publisher = {Microcosm Press},
-  year = {2011}
+  address   = {Hawthorne, CA},
+  year      = {2011}
 }
 
-@article{hughes1971,
-  author = {Hughes, G. F.},
-  title = {On the Mean Accuracy of Statistical Pattern Recognizers},
-  journal = {IEEE Transactions on Information Theory},
-  volume = {14},
-  number = {1},
-  pages = {55--63},
-  year = {1968}
+@book{fehse2003,
+  author    = {Fehse, Wigbert},
+  title     = {Automated Rendezvous and Docking of Spacecraft},
+  publisher = {Cambridge University Press},
+  address   = {Cambridge},
+  year      = {2003}
 }
+
+% --- Anomaly detection against a modelled background ------------------------
+
+@article{reed1990,
+  author  = {Reed, I. S. and Yu, X.},
+  title   = {Adaptive Multiple-Band {CFAR} Detection of an Optical Pattern with Unknown Spectral Distribution},
+  journal = {IEEE Transactions on Acoustics, Speech, and Signal Processing},
+  volume  = {38},
+  number  = {10},
+  pages   = {1760--1770},
+  year    = {1990}
+}
+
+@article{chandola2009,
+  author  = {Chandola, Varun and Banerjee, Arindam and Kumar, Vipin},
+  title   = {Anomaly Detection: A Survey},
+  journal = {ACM Computing Surveys},
+  volume  = {41},
+  number  = {3},
+  pages   = {1--58},
+  year    = {2009}
+}
+
+% --- Bayesian inference and search theory -----------------------------------
 
 @book{pearl1988,
-  author = {Pearl, Judea},
-  title = {Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference},
+  author    = {Pearl, Judea},
+  title     = {Probabilistic Reasoning in Intelligent Systems: Networks of Plausible Inference},
   publisher = {Morgan Kaufmann},
-  year = {1988}
+  address   = {San Mateo, CA},
+  year      = {1988}
+}
+
+@book{stone1975,
+  author    = {Stone, Lawrence D.},
+  title     = {Theory of Optimal Search},
+  publisher = {Academic Press},
+  address   = {New York},
+  year      = {1975}
+}
+
+@book{waltz1990,
+  author    = {Waltz, Edward and Llinas, James},
+  title     = {Multisensor Data Fusion},
+  publisher = {Artech House},
+  address   = {Boston, MA},
+  year      = {1990}
+}
+
+% --- Shortest-path search ---------------------------------------------------
+
+@article{hart1968,
+  author  = {Hart, Peter E. and Nilsson, Nils J. and Raphael, Bertram},
+  title   = {A Formal Basis for the Heuristic Determination of Minimum Cost Paths},
+  journal = {IEEE Transactions on Systems Science and Cybernetics},
+  volume  = {4},
+  number  = {2},
+  pages   = {100--107},
+  year    = {1968}
 }
 
 @book{cormen2009,
-  author = {Cormen, Thomas H. and Leiserson, Charles E. and Rivest, Ronald L. and Stein, Clifford},
-  title = {Introduction to Algorithms},
-  edition = {3rd},
+  author    = {Cormen, Thomas H. and Leiserson, Charles E. and Rivest, Ronald L. and Stein, Clifford},
+  title     = {Introduction to Algorithms},
+  edition   = {3rd},
   publisher = {The MIT Press},
-  year = {2009}
+  address   = {Cambridge, MA},
+  year      = {2009}
+}
+
+% --- Passive emitter geolocation (TDOA) -------------------------------------
+
+@article{foy1976,
+  author  = {Foy, Wade H.},
+  title   = {Position-Location Solutions by {Taylor}-Series Estimation},
+  journal = {IEEE Transactions on Aerospace and Electronic Systems},
+  volume  = {AES-12},
+  number  = {2},
+  pages   = {187--194},
+  year    = {1976}
+}
+
+@article{chan1994,
+  author  = {Chan, Y. T. and Ho, K. C.},
+  title   = {A Simple and Efficient Estimator for Hyperbolic Location},
+  journal = {IEEE Transactions on Signal Processing},
+  volume  = {42},
+  number  = {8},
+  pages   = {1905--1915},
+  year    = {1994}
 }
 
 @book{skolnik2001,
-  author = {Skolnik, Merrill I.},
-  title = {Introduction to Radar Systems},
-  edition = {3rd},
+  author    = {Skolnik, Merrill I.},
+  title     = {Introduction to Radar Systems},
+  edition   = {3rd},
   publisher = {McGraw-Hill},
-  year = {2001}
+  address   = {New York},
+  year      = {2001}
 }
 
-@book{waltz1998,
-  author = {Waltz, Edward and Llinas, James},
-  title = {Multisensor Data Fusion},
-  publisher = {Artech House},
-  year = {1990}
+% --- Point processes / activity modelling -----------------------------------
+
+@book{daley2003,
+  author    = {Daley, D. J. and Vere-Jones, D.},
+  title     = {An Introduction to the Theory of Point Processes, Volume I: Elementary Theory and Methods},
+  edition   = {2nd},
+  publisher = {Springer},
+  address   = {New York},
+  year      = {2003}
 }

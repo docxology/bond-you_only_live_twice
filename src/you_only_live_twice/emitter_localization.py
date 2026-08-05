@@ -4,8 +4,9 @@ The final discovery asset is the base's own transmitter: passive sensors time
 the arrival of a single burst, and the *time differences of arrival* (TDOA)
 between sensor pairs define hyperbolae whose intersection is the emitter
 position. This module implements that classic hyperbolic localisation problem
-(Bate et al. [phasing] treats the orbit side; the passive-geolocation
-formulation is standard in radar/EW and passive sensor system texts):
+using the Taylor-series (Gauss–Newton) estimator of Foy (1976), the standard
+iterative solution to the passive-geolocation equations also treated by
+Chan & Ho (1994) and in radar/EW texts (Skolnik 2001):
 
 * :func:`tdoa_measurements` — exact range-difference measurements
   :math:`d_i = \\lVert e - s_i\\rVert - \\lVert e - s_0\\rVert` against a
@@ -13,6 +14,8 @@ formulation is standard in radar/EW and passive sensor system texts):
 * :func:`localize_tdoa` — Gauss–Newton least squares that drives the residuals
   :math:`r_i(x) = \\lVert x-s_i\\rVert - \\lVert x-s_0\\rVert - d_i` to zero,
   starting from an initial guess and iterating the normal equations;
+* :func:`time_differences_to_ranges` — the receiver-side conversion from
+  measured arrival-time differences (seconds) to range differences (metres);
 * :func:`localization_error` — the achieved accuracy in metres.
 
 With noise-free measurements the solver converges to machine precision,
@@ -33,6 +36,7 @@ __all__ = [
     "localization_error",
     "localize_tdoa",
     "tdoa_measurements",
+    "time_differences_to_ranges",
 ]
 
 #: Speed of light, m/s.
@@ -65,11 +69,13 @@ def build_sensor_posts(
 def tdoa_measurements(
     sensor_positions: tuple[tuple[float, float], ...],
     emitter: tuple[float, float],
-    c: float = SPEED_OF_LIGHT,
 ) -> np.ndarray:
     """Exact range differences :math:`d_i` relative to the first sensor, metres.
 
-    ``d_i = ||e - s_i|| - ||e - s_0||`` for :math:`i = 1..n-1`.
+    ``d_i = ||e - s_i|| - ||e - s_0||`` for :math:`i = 1..n-1`. The measured
+    quantity in the field is a *time* difference; multiplying it by
+    :data:`SPEED_OF_LIGHT` converts it to the range difference this module
+    works in, so the propagation speed never enters the geometry itself.
     """
     sensor0 = sensor_positions[0]
     base = math.hypot(emitter[0] - sensor0[0], emitter[1] - sensor0[1])
@@ -77,8 +83,20 @@ def tdoa_measurements(
     for sensor in sensor_positions[1:]:
         dist = math.hypot(emitter[0] - sensor[0], emitter[1] - sensor[1])
         deltas.append(dist - base)
-    del c  # propagation delay is irrelevant to the exact range difference
     return np.asarray(deltas, dtype=float)
+
+
+def time_differences_to_ranges(
+    time_deltas: np.ndarray, c: float = SPEED_OF_LIGHT
+) -> np.ndarray:
+    """Convert measured arrival-time differences (s) to range differences (m).
+
+    This is the one place :data:`SPEED_OF_LIGHT` is used: TDOA receivers report
+    seconds, while :func:`localize_tdoa` solves the geometry in metres.
+    """
+    if c <= 0.0:
+        raise ValueError("propagation speed must be positive")
+    return np.asarray(time_deltas, dtype=float) * c
 
 
 def _residuals_and_jacobian(
@@ -103,7 +121,6 @@ def localize_tdoa(
     sensor_positions: tuple[tuple[float, float], ...],
     deltas: np.ndarray,
     x0: np.ndarray,
-    c: float = SPEED_OF_LIGHT,
     max_iter: int = 100,
     tol: float = 1e-9,
 ) -> dict[str, Any]:

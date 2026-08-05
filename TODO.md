@@ -1,74 +1,70 @@
 # TODO — you_only_live_twice (VOLCANO)
 
-Forward-only backlog for the *You Only Live Twice* (1967) film package.
+Forward-only backlog for the *You Only Live Twice* (1967) film package. Items
+that are done do not live here — the built capabilities are described in
+`README.md` and `docs/architecture.md`. This file holds only work that is still
+open.
 
-## Built (phase-2)
+## Open — modelling depth
 
-- **Pure domain core** (`src/you_only_live_twice/`):
-  - `rendezvous_windows.py` — circular orbital propagation, line-of-sight range
-    & elevation, contiguous rendezvous-window search, coplanar Hohmann
-    delta-v / transfer-time budget.
-  - `terrain_anomaly.py` — volcano-camouflage scene generator, Gaussian
-    background modelling, standardized-residual thermal (one-tailed) + terrain
-    (magnitude) anomaly scoring, weighted fusion, connected-component
-    concealed-lair detection.
-  - `pattern_of_life.py` — deterministic diurnal-rate activity schedule,
-    weekly/daily histograms, autocorrelation dominant period, peak windows,
-    tempo classification, duty cycle.
-  - `scenario.py` — the single deterministic mission scenario + provenance
-    input hash.
-- **Protocol adapter** (`mission.py`): implements the frozen `bond_api`
-  `MissionProvider` (slug `you_only_live_twice`, codename VOLCANO), registers
-  four gadgets with the `GadgetRegistry`.
-- **Derivation**: `figures.py` (3 deterministic PNGs), `manuscript_variables.py`
-  (token hydration from `manuscript/config.yaml` + scenario).
-- **Thin scripts**: `run_mission.py` (per-phase CLI),
-  `00_preflight.py`, `render_figures.py`, `z_generate_manuscript_variables.py`.
-- **Tests**: per-concept real-data tests, mission/protocol test, manuscript
-  cross-reference test, scripts smoke test — zero mocks.
+- [ ] **Perturbation-aware propagator.** `rendezvous_windows` currently
+      propagates pure circular two-body motion. Add J2 (and optionally drag)
+      so low-Earth intercept windows are realistic, keeping the two-body solver
+      as the deterministic baseline to compare against.
+      *Acceptance:* a J2 run shifts window start times measurably versus the
+      two-body baseline, both are exposed, and the manuscript reports the
+      difference through tokens.
 
-## Built (phase-4 · deep improvement)
+- [ ] **Sub-step window edges.** Window `start_s` / `end_s` are quantised to
+      the search step (`RENDEZVOUS_DT_S`). Once a window is bracketed by the
+      grid search, refine its edges by bisection or a spline on the constraint
+      function.
+      *Acceptance:* halving the step size changes reported edges by less than
+      the refinement tolerance, proving the result is no longer step-dependent.
 
-- **Four new pure-domain modules**:
-  - `orbital_capture.py` — capture envelope (range + relative-speed), velocity-
-    matching grapple burn, phasing lead angle & wait time (classic phasing
-    problem).
-  - `hidden_base_discovery.py` — Bayesian naive-Bayes cue fusion
-    (thermal/terrain/RF Gaussian likelihood ratios), posterior map,
-    deterministic search order, expected effort, discovery curve.
-  - `infiltration_planning.py` — slope/thermal/guard line-of-sight cost fields,
-    deterministic 4-connected A* vs a same-space greedy baseline (non-negative
-    reduction proven).
-  - `emitter_localization.py` — TDOA hyperbolic multilateration via
-    Gauss–Newton (converges to metre accuracy noise-free).
-- **Deepened internals**: `mission.py` now executes all seven capabilities via
-  the single source `scenario.solve_mission()`; registers nine gadgets;
-  brief/plan extended to six objectives / seven steps (protocol public shape
-  unchanged — `brief/recon/plan/execute/debrief` + `register_gadgets`).
-- **Derivation**: `figures.py` now renders six deterministic PNGs (added
-  capture, discovery posterior, infiltration route); `manuscript_variables.py`
-  hydrates 49 `{{TOKEN}}`s, all from the single analysis source.
-- **Manuscript** updated: methodology (7 sections), results (7 subsections +
-  6 figures), abstract, conclusion; references.bib extended with Bate/Mueller/
-  White, Cormen et al., Pearl, Skolnik. Scripts `render_figures.py` and
-  `run_mission.py` extended; preflight verifies 6 objectives.
+- [ ] **Out-of-plane capture.** `orbital_capture` models the coplanar phasing
+      problem only. Add the plane-change component to the velocity-matching
+      budget so the grapple Δv is not understated for the RAAN offset the
+      scenario actually carries.
+      *Acceptance:* the reported Δv rises for a non-zero RAAN difference and
+      matches a hand-computed vector-difference check.
 
-## Declared integration points
+- [ ] **Dynamic infiltration.** `infiltration_planning` is a static A* over a
+      fixed cost surface. Extend to moving guard posts with replanning, keeping
+      the static solver as the deterministic baseline.
+      *Acceptance:* a moving-guard scenario produces a different route than the
+      static plan, and the static case remains bit-identical.
 
-- **`bond-utilities.mission_io.record_provenance_outcome`** — once the shared
-  provenance helper ships as an importable dependency, mission outcomes should
-  delegate persistence to it instead of embedding provenance inline.
-  Acceptance: `uv add bond-utilities` + swap in `mission.py` with no behaviour
-  change.
-- **Perturbation-aware propagator** — extend `rendezvous_windows` with J2/drag
-  for realistic low-Earth intercepts; keep the current two-body solver as the
-  deterministic baseline.
-- **Spline-refined window edges** — once a window is bracketed by the grid
-  search, refine `start_s`/`end_s` to sub-step precision.
-- **Dynamic infiltration** — extend `infiltration_planning` to moving guard
-  posts / replanning; keep the static A* as the deterministic baseline.
+- [ ] **Noise-regime characterisation for TDOA.** `localize_tdoa` is exercised
+      noise-free and lightly noised. Add a deterministic sweep over measurement
+      noise and report error growth against the geometric dilution of precision
+      predicted by the sensor ring.
+      *Acceptance:* measured error scales with predicted GDOP across the sweep,
+      with the relationship asserted rather than eyeballed.
+
+## Open — integration
+
+- [ ] **`bond-utilities.mission_io.record_provenance_outcome`.** Mission
+      outcomes currently construct provenance inline in `mission.execute`.
+      Once the shared helper ships as an importable dependency, delegate
+      persistence to it.
+      *Acceptance:* `uv add bond-utilities` plus the swap in `mission.py`, with
+      no change to the outcome's public shape and no change to `input_hash`.
+
+## Open — reporting
+
+- [ ] **Emitter-localization figure.** Six figures are rendered; emitter
+      localization is reported numerically only. A sensor-ring plot with the
+      TDOA hyperbolae and the converged fix would complete the set.
+      *Acceptance:* the new filename is added to `FIGURE_FILENAMES` (which the
+      manuscript's figure count reads), and the figure appears in
+      `03_results.md` with a `{#fig:emitter}` label.
 
 ## Not planned
 
-- Any remote / push (local-only tree).
-- Mocks, untracked randomness, or wall-clock in persisted artifacts.
+- Any remote or push — this is a local-only tree.
+- Mocks, untracked randomness, or wall-clock values in persisted artifacts.
+- Any dependency on a sibling film package, the coordinator, or the
+  orchestrator (the BOND layer topology forbids it).
+- Changes to the public shape of the `MissionProvider` surface or the gadget
+  registration — those are frozen fleet-wide.

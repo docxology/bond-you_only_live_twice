@@ -27,7 +27,7 @@ terrain-weighted prior, isolating the base in rank {{DISCOVERY_TRUE_RANK}} of
 {{DISCOVERY_TRUE_POSTERIOR}} (P-found-within-10-sites
 {{DISCOVERY_P_FIRST_10}}). The **infiltration planner** routes an agent to the
 lair on a slope/thermal/guard-exposure cost surface, cutting route cost by
-{{INFILTRATION_REDUCTION}} % over a greedy baseline, and the **emitter
+{{INFILTRATION_REDUCTION_PCT}} % over a greedy baseline, and the **emitter
 locator** fixes the base's transmitter by TDOA multilateration to within
 {{EMITTER_ERROR_M}} m using {{EMITTER_SENSORS}} passive sensors. Finally the
 **pattern-of-life analyzer** reads a week of base activity

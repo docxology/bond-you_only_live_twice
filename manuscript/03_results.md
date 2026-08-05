@@ -49,9 +49,11 @@ Fusing the thermal, terrain and RF cues with a terrain-weighted prior over the
 {{DISCOVERY_CANDIDATE_CELLS}} candidate sites ranks the true base first
 (rank {{DISCOVERY_TRUE_RANK}}) with posterior probability
 {{DISCOVERY_TRUE_POSTERIOR}}; the search finds it within ten sites with
-probability {{DISCOVERY_P_FIRST_10}}, an expected effort of
-{{DISCOVERY_EFFORT_CELLS}} cell(s). Figure [@fig:discovery] shows the posterior
-map, a single concentrated peak on the true base.
+probability {{DISCOVERY_P_FIRST_10}}. Independently of that ground truth, the
+posterior-weighted expected effort — the mean number of sites a greedy search
+inspects, $\sum_k k\,P(c_k)$ — is {{DISCOVERY_EXPECTED_EFFORT_CELLS}} cell(s)
+against a uniform-prior expectation of half the field. Figure [@fig:discovery]
+shows the posterior map, a single concentrated peak on the true base.
 
 ![Hidden-base discovery: posterior probability map with the true base marked.](../output/figures/hidden_base_discovery.png){#fig:discovery}
 
@@ -60,8 +62,10 @@ map, a single concentrated peak on the true base.
 The slope/thermal/guard cost surface routes the agent from the rim to the lair
 in {{INFILTRATION_PATH_LENGTH}} steps at a total cost of
 {{INFILTRATION_ROUTE_COST}}, against a greedy baseline of
-{{INFILTRATION_BASELINE_COST}} — a {{INFILTRATION_REDUCTION}} cost reduction —
-accruing a thermal exposure of {{INFILTRATION_EXPOSURE}}. Figure
+{{INFILTRATION_BASELINE_COST}} — a {{INFILTRATION_REDUCTION_PCT}} % cost
+reduction (fraction {{INFILTRATION_REDUCTION}}) — accruing a thermal exposure
+of {{INFILTRATION_EXPOSURE}} over {{INFILTRATION_EXPANDED}} expanded cells.
+Figure
 [@fig:infiltration] shows the cost field and the optimal route.
 
 ![Infiltration route: movement-cost field with the optimal route (red), entry (green), lair (cyan) and guard posts (orange).](../output/figures/infiltration_route.png){#fig:infiltration}

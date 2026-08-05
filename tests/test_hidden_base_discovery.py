@@ -16,6 +16,7 @@ from you_only_live_twice.hidden_base_discovery import (
     expected_discovery_effort,
     fuse_posteriors,
     gaussian_likelihood_ratio,
+    posterior_expected_effort,
     rank_search_order,
     terrain_weighted_priors,
 )
@@ -138,6 +139,41 @@ def test_expected_discovery_effort() -> None:
     assert expected_discovery_effort(post, (1, 1)) == float("inf")
     with pytest.raises(ValueError):
         expected_discovery_effort(np.zeros(4), (0, 0))
+
+
+def test_posterior_expected_effort_matches_closed_forms() -> None:
+    """E[K] = sum_k k*P(c_k): check both analytic extremes and an asymmetric case."""
+    # Point mass -> the search always stops on the first cell.
+    point = np.zeros((4, 4))
+    point[2, 1] = 1.0
+    assert posterior_expected_effort(point) == pytest.approx(1.0)
+
+    # Uniform over N cells -> (N + 1) / 2.
+    n = 16
+    uniform = np.full((4, 4), 1.0 / n)
+    assert posterior_expected_effort(uniform) == pytest.approx((n + 1) / 2.0)
+
+    # Asymmetric case computed by hand: ranks 1..4 carry 0.5/0.3/0.15/0.05
+    # over a 2x2 grid -> 1(.5) + 2(.3) + 3(.15) + 4(.05) = 1.75.
+    asym = np.array([[0.5, 0.3], [0.15, 0.05]])
+    assert posterior_expected_effort(asym) == pytest.approx(1.75)
+
+    with pytest.raises(ValueError):
+        posterior_expected_effort(np.zeros(4))
+    with pytest.raises(ValueError):
+        posterior_expected_effort(np.zeros((3, 3)))
+
+
+def test_posterior_expected_effort_is_bounded_by_the_realised_rank_regime(
+    _scene: dict,
+) -> None:
+    """A concentrated posterior must beat the uniform-search expectation."""
+    post = _scene["posterior"]
+    n_cells = post.size
+    expected = posterior_expected_effort(post)
+    assert 1.0 <= expected < (n_cells + 1) / 2.0
+    # This posterior is near a point mass, so it sits close to the floor.
+    assert expected < 1.5
 
 
 def test_canonical_scene_isolates_true_base(_scene: dict) -> None:

@@ -22,11 +22,13 @@ from typing import Any
 import yaml
 from bond_api.protocol import protocol_surface
 
+from you_only_live_twice.figures import FIGURE_FILENAMES
 from you_only_live_twice.scenario import (
     CODENAME,
     PACKAGE_VERSION,
     SEED,
     build_scenario,
+    scenario_descriptor,
     solve_mission,
 )
 
@@ -95,6 +97,7 @@ def generate_variables(
     paper = config.get("paper", {}) if isinstance(config.get("paper", {}), dict) else {}
 
     surface = protocol_surface()
+    desc = scenario_descriptor()
     m = _mission_metrics()
     rv, cap = m["rendezvous"], m["capture"]
     lair, disc = m["lair"], m["discovery"]
@@ -127,6 +130,38 @@ def generate_variables(
         # Scenario
         "SCENARIO_SEED": str(SEED),
         "MISSION_INPUT_HASH": m["input_hash"][:16],
+        "NUM_FIGURES": str(len(FIGURE_FILENAMES)),
+        # Experimental setup — read straight off the provenance descriptor, so
+        # a reported parameter cannot drift from the parameter simulated.
+        "SETUP_CHASER_ALT_KM": _fmt(desc["orbits"]["chaser"]["altitude_km"]),
+        "SETUP_CHASER_INC_DEG": _fmt(desc["orbits"]["chaser"]["inclination_deg"]),
+        "SETUP_CHASER_RAAN_DEG": _fmt(desc["orbits"]["chaser"]["raan_deg"]),
+        "SETUP_CHASER_PHASE_RAD": _fmt(desc["orbits"]["chaser"]["phase_rad"]),
+        "SETUP_TARGET_ALT_KM": _fmt(desc["orbits"]["target"]["altitude_km"]),
+        "SETUP_TARGET_INC_DEG": _fmt(desc["orbits"]["target"]["inclination_deg"]),
+        "SETUP_TARGET_RAAN_DEG": _fmt(desc["orbits"]["target"]["raan_deg"]),
+        "SETUP_TARGET_PHASE_RAD": _fmt(desc["orbits"]["target"]["phase_rad"]),
+        "SETUP_RDV_HORIZON_S": _fmt(desc["rendezvous"]["horizon_s"]),
+        "SETUP_RDV_STEP_S": _fmt(desc["rendezvous"]["dt_s"]),
+        "SETUP_RDV_MAX_RANGE_KM": _fmt(desc["rendezvous"]["max_range_km"]),
+        "SETUP_RDV_MIN_ELEV_DEG": _fmt(desc["rendezvous"]["min_elevation_deg"]),
+        "SETUP_CAPTURE_MAX_RANGE_KM": _fmt(desc["capture"]["max_range_km"]),
+        "SETUP_CAPTURE_MAX_SPEED_M_S": _fmt(desc["capture"]["max_speed_m_s"]),
+        "SETUP_CAPTURE_STEP_S": _fmt(desc["capture"]["dt_s"]),
+        "SETUP_GRID_CELLS": _fmt(desc["volcano"]["size"]),
+        "SETUP_CONE_RADIUS_CELLS": _fmt(desc["volcano"]["cone_radius_cells"]),
+        "SETUP_CONE_HEIGHT_M": _fmt(desc["volcano"]["cone_height_m"]),
+        "SETUP_LAIR_HEAT_K": _fmt(desc["volcano"]["lair_heat_kelvin"]),
+        "SETUP_ACTIVITY_RATE_PER_H": _fmt(desc["activity"]["base_rate_per_hour"]),
+        "SETUP_ACTIVITY_HOURS": _fmt(desc["activity"]["hours"]),
+        "SETUP_DISCOVERY_MU_HOT": _fmt(desc["discovery"]["mu_hot"]),
+        "SETUP_DISCOVERY_BETA": _fmt(desc["discovery"]["beta"]),
+        "SETUP_DISCOVERY_RF_POWER": _fmt(desc["discovery"]["rf_power"]),
+        "SETUP_INFIL_SLOPE_WEIGHT": _fmt(desc["infiltration"]["slope_weight"]),
+        "SETUP_INFIL_THERMAL_WEIGHT": _fmt(desc["infiltration"]["thermal_weight"]),
+        "SETUP_INFIL_GUARD_WEIGHT": _fmt(desc["infiltration"]["guard_weight"]),
+        "SETUP_EMITTER_RING_RADIUS_M": _fmt(desc["emitter"]["ring_radius_m"]),
+        "SETUP_EMITTER_SENSORS": _fmt(desc["emitter"]["sensor_count"]),
         # Rendezvous
         "RENDEZVOUS_NUM_WINDOWS": str(rv["num_windows"]),
         "RENDEZVOUS_FIRST_START_S": _fmt(rv["first_window_start_s"]),
@@ -150,15 +185,17 @@ def generate_variables(
         # Hidden-base discovery
         "DISCOVERY_TRUE_POSTERIOR": _fmt(disc["true_posterior"]),
         "DISCOVERY_TRUE_RANK": str(disc["true_rank"]),
-        "DISCOVERY_EFFORT_CELLS": _fmt(disc["expected_effort_cells"]),
+        "DISCOVERY_EXPECTED_EFFORT_CELLS": _fmt(disc["expected_effort_cells"]),
         "DISCOVERY_P_FIRST_10": _fmt(disc["prob_found_first_10"]),
         "DISCOVERY_CANDIDATE_CELLS": str(disc["num_candidate_cells"]),
         # Infiltration
         "INFILTRATION_ROUTE_COST": _fmt(infil["route_cost"]),
         "INFILTRATION_PATH_LENGTH": str(infil["path_length"]),
+        "INFILTRATION_EXPANDED": str(infil["expanded"]),
         "INFILTRATION_EXPOSURE": _fmt(infil["thermal_exposure"]),
         "INFILTRATION_BASELINE_COST": _fmt(infil["baseline_cost"]),
         "INFILTRATION_REDUCTION": _fmt(infil["cost_reduction"]),
+        "INFILTRATION_REDUCTION_PCT": _fmt(round(infil["cost_reduction"] * 100.0, 2)),
         # Emitter localization
         "EMITTER_ERROR_M": _fmt(emit["error_m"]),
         "EMITTER_ITERATIONS": str(emit["iterations"]),

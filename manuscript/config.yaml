@@ -5,7 +5,7 @@
 
 paper:
   title: "You Only Live Twice: VOLCANO — Special-Agent Mission Software"
-  subtitle: "Orbital Rendezvous Windows, Concealed-Lair Detection, and Pattern-of-Life Analysis"
+  subtitle: "Orbital Rendezvous and Capture, Bayesian Hidden-Base Discovery, Infiltration Routing, TDOA Emitter Localization, and Pattern-of-Life Analysis"
   version: "0.1.0"
   date: "2026-08-04"
 
@@ -26,10 +26,17 @@ publication:
 keywords:
   - "orbital mechanics"
   - "rendezvous windows"
-  - "intercept"
+  - "orbital capture"
+  - "orbital phasing"
+  - "Hohmann transfer"
   - "concealed lair"
   - "thermal anomaly"
   - "terrain anomaly"
+  - "Bayesian cue fusion"
+  - "search theory"
+  - "A* path planning"
+  - "TDOA multilateration"
+  - "passive geolocation"
   - "pattern of life"
   - "volcano camouflage"
   - "deterministic computation"
@@ -39,21 +46,19 @@ mission:
   codename: "VOLCANO"
   slug: "you_only_live_twice"
   seed: 1967
-  scenario:
-    rendezvous:
-      chaser_altitude_km: 550.0
-      target_altitude_km: 800.0
-      window_horizon_s: 86400
-      max_range_km: 500.0
-      min_elevation_deg: 10.0
-    volcano:
-      size_cells: 64
-      cone_radius_cells: 20.0
-      cone_height_m: 2000.0
-      lair_heat_kelvin: 25.0
-    activity:
-      base_rate_per_hour: 4.0
-      hours: 168
+  # NOTE: the authoritative scenario parameters live in
+  # src/you_only_live_twice/scenario.py and reach the manuscript as
+  # {{SETUP_*}} tokens derived from scenario_descriptor(). The block below is a
+  # human-readable orientation aid only — never cite it as a source of truth,
+  # and never hand-copy a value out of it into prose.
+  capabilities:
+    - "rendezvous_windows"
+    - "orbital_capture"
+    - "terrain_anomaly"
+    - "hidden_base_discovery"
+    - "infiltration_planning"
+    - "emitter_localization"
+    - "pattern_of_life"
 
 metadata:
   author: "Daniel Ari Friedman"

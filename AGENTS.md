@@ -4,6 +4,11 @@ Project rules for agents working in this package. **Scope = exactly this
 directory.** Local-only tree; never push; path-scoped commits (`git add -A` in
 this repo only).
 
+Deeper guidance lives under `docs/`: `docs/AGENTS.md` (working procedure and
+package-specific traps), `docs/agent_instructions.md` (the hard rules),
+`docs/architecture.md` (module-by-module architecture and the `MissionProvider`
+mapping), `docs/testing_philosophy.md` (what a test here must prove).
+
 ## Layer contract
 
 | Surface | Rule |
@@ -33,7 +38,12 @@ this repo only).
 
 All seven capabilities are computed by the single source
 `scenario.solve_mission`, which both `mission.execute` and the manuscript
-token generator consume so outcomes and prose can never disagree.
+token generator consume so outcomes and prose can never disagree. Scenario
+*inputs* follow the same discipline: `scenario.scenario_descriptor()` is at
+once the object the provenance `input_hash` covers and the source of the
+manuscript's `{{SETUP_*}}` parameter tokens, so a reported parameter cannot
+drift from the simulated one. Add a new parameter as a named module-level
+constant and put it in the descriptor.
 
 ## Standards
 

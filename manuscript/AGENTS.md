@@ -15,10 +15,10 @@ and the figure protocol.
 | --- | --- | --- |
 | `00_abstract.md` | Abstract; result summary | all headline result tokens |
 | `01_introduction.md` | Mission setup, reader's guide | none |
-| `02_methodology.md` | Mathematics of the seven capabilities | none |
-| `03_results.md` | All results + all figures | figure refs `rendezvous`, `capture`, `lair`, `discovery`, `infiltration`, `pattern` |
-| `04_conclusion.md` | Summary | none |
-| `05_experimental_setup.md` | Scenario params, environment | setup + env tokens |
+| `02_methodology.md` | Mathematics of the seven capabilities | none (citations only) |
+| `03_results.md` | All results + all figures | result tokens; figure refs `rendezvous`, `capture`, `lair`, `discovery`, `infiltration`, `pattern` |
+| `04_conclusion.md` | Summary | identity tokens |
+| `05_experimental_setup.md` | Scenario params, environment | `{{SETUP_*}}` tokens (derived from `scenario_descriptor()`), `{{NUM_FIGURES}}`, env tokens |
 | `06_reproducibility.md` | Determinism, artifacts, test gate | provenance tokens |
 | `07_scope_and_related_work.md` | Scope, related work | none |
 | `99_references.md` | Bibliography | none |
@@ -29,9 +29,13 @@ and the figure protocol.
 
 ## Token protocol
 
-Numbers must be injected as `{{TOKEN}}`, never hand-authored. The authoritative
-map is the return value of `src/you_only_live_twice/manuscript_variables.py::
-generate_variables()`. The live cross-reference test
+Numbers must be injected as `{{TOKEN}}`, never hand-authored — **results and
+scenario parameters alike**. The authoritative map is the return value of
+`src/you_only_live_twice/manuscript_variables.py::generate_variables()`, which
+draws results from `scenario.solve_mission()` and setup parameters from
+`scenario.scenario_descriptor()` (the same object the provenance hash covers).
+`config.yaml` supplies paper *identity* only; never hand-copy a value out of
+its `mission:` block into prose. The live cross-reference test
 `tests/test_manuscript_variables.py::test_all_manuscript_tokens_are_generated`
 gates completeness by scanning `[0-9]*.md` only (guide files legitimately
 contain literal placeholders).

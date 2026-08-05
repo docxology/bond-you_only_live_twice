@@ -37,10 +37,12 @@ def test_run_mission_each_phase() -> None:
         proc = _run("run_mission.py", phase)
         assert proc.returncode == 0, (phase, proc.stderr)
         assert f"[VOLCANO] {phase}" in proc.stdout
-    # Unknown phase -> defaults to full flow.
+    # Unknown phase -> defaults to full flow (must print the run banner, not
+    # merely contain the substring "run" somewhere in unrelated output).
     proc = _run("run_mission.py", "not-a-phase")
     assert proc.returncode == 0
-    assert "run" in proc.stdout
+    assert "[VOLCANO] run " in proc.stdout
+    assert "lessons=" in proc.stdout
 
 
 def test_preflight_passes() -> None:

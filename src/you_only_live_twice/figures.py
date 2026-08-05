@@ -1,14 +1,23 @@
 """Deterministic figures for the VOLCANO mission report.
 
-Renders publication-quality PNGs under ``output/figures/`` for the three
-special-agent capabilities:
+Renders publication-quality PNGs under ``output/figures/`` — one per reported
+capability (the pure-solver capabilities that produce a scalar table rather
+than a field, notably emitter localisation, are reported numerically):
 
 * rendezvous windows — target elevation and slant range vs time, with the
   detected windows shaded;
+* orbital capture — slant range and relative speed vs time with the grapple
+  window shaded;
 * concealed-lair detection — the thermal + terrain scenes and the fused
   anomaly map with the top candidate region marked;
+* hidden-base discovery — the fused posterior map with the true base marked;
+* infiltration route — the movement-cost field with the A* route, entry, lair
+  and guard posts overlaid;
 * pattern of life — the daily activity profile with the peak windows and the
   base operating rhythm.
+
+:data:`FIGURE_FILENAMES` is the authoritative list of produced files; the
+manuscript's figure count is derived from it rather than hand-authored.
 
 Every figure is drawn with ``MPLBACKEND=Agg`` and fixed data, so output is
 byte-deterministic for a given scenario. Functions return the absolute path of
@@ -26,6 +35,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from you_only_live_twice.infiltration_planning import combined_cost_field
 from you_only_live_twice.pattern_of_life import (
     BaseActivity,
     daily_activity_profile,
@@ -41,7 +51,19 @@ from you_only_live_twice.terrain_anomaly import (
     detect_concealed_lair,
 )
 
+#: Every PNG this module writes, in report order. Single source of truth for
+#: the manuscript's figure inventory and the render script's expectations.
+FIGURE_FILENAMES: tuple[str, ...] = (
+    "rendezvous_windows.png",
+    "orbital_capture.png",
+    "concealed_lair_detection.png",
+    "hidden_base_discovery.png",
+    "infiltration_route.png",
+    "pattern_of_life.png",
+)
+
 __all__ = [
+    "FIGURE_FILENAMES",
     "figures_dir",
     "plot_concealed_lair",
     "plot_hidden_base_discovery",
@@ -261,8 +283,6 @@ def plot_hidden_base_discovery() -> str:
 
 def plot_infiltration_route() -> str:
     """Plot the combined cost field with the optimal infiltration route overlaid."""
-    from you_only_live_twice.infiltration_planning import combined_cost_field
-
     scenario = build_scenario()
     volcano = scenario["volcano"]
     infil = scenario["infiltration"]

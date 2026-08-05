@@ -29,6 +29,7 @@ from you_only_live_twice.hidden_base_discovery import (
     build_discovery_scene,
     discovery_probability_curve,
     expected_discovery_effort,
+    posterior_expected_effort,
     rank_search_order,
 )
 from you_only_live_twice.infiltration_planning import plan_infiltration
@@ -62,6 +63,7 @@ __all__ = [
     "PACKAGE_VERSION",
     "SEED",
     "build_scenario",
+    "scenario_descriptor",
     "scenario_input_hash",
     "solve_mission",
 ]
@@ -71,6 +73,32 @@ CODENAME = "VOLCANO"
 PACKAGE_VERSION = "0.1.0"
 #: Deterministic seed — the film's release year.
 SEED = 1967
+
+#: Orbital geometry: chaser (capture platform) and target (adversary capsule).
+CHASER_ALTITUDE_KM = 550.0
+CHASER_INCLINATION_DEG = 98.2
+CHASER_RAAN_DEG = 45.0
+CHASER_PHASE_RAD = 0.0
+TARGET_ALTITUDE_KM = 800.0
+TARGET_INCLINATION_DEG = 98.2
+TARGET_RAAN_DEG = 45.5
+TARGET_PHASE_RAD = 1.9
+
+#: Rendezvous (line-of-sight) window search envelope.
+RENDEZVOUS_HORIZON_S = 86400.0
+RENDEZVOUS_DT_S = 60.0
+RENDEZVOUS_MAX_RANGE_KM = 500.0
+RENDEZVOUS_MIN_ELEVATION_DEG = 10.0
+
+#: Volcano-camouflage scene geometry.
+VOLCANO_SIZE_CELLS = 64
+VOLCANO_CONE_RADIUS_CELLS = 20.0
+VOLCANO_CONE_HEIGHT_M = 2_000.0
+VOLCANO_LAIR_HEAT_K = 25.0
+
+#: Base activity schedule.
+ACTIVITY_RATE_PER_HOUR = 4.0
+ACTIVITY_DAYS = 7
 
 #: Capture envelope: the platform can grapple while the capsule is this close
 #: and slow enough (km / m·s⁻¹).
@@ -100,19 +128,19 @@ EMITTER_SENSOR_COUNT = 5
 def _orbits() -> dict[str, Any]:
     """The chase and target orbital elements (circular, near-polar recon)."""
     return {
-        # Chaser: a rocket ~550 km up on a sun-synchronous-like inclination.
+        # Chaser: a rocket on a sun-synchronous-like inclination.
         "chaser": CircularOrbit.from_altitude(
-            altitude_km=550.0,
-            inclination=98.2 * 3.141592653589793 / 180.0,
-            raan=45.0 * 3.141592653589793 / 180.0,
-            initial_phase=0.0,
+            altitude_km=CHASER_ALTITUDE_KM,
+            inclination=math.radians(CHASER_INCLINATION_DEG),
+            raan=math.radians(CHASER_RAAN_DEG),
+            initial_phase=CHASER_PHASE_RAD,
         ),
         # Target: the adversary space capsule a bit higher, offset in plane.
         "target": CircularOrbit.from_altitude(
-            altitude_km=800.0,
-            inclination=98.2 * 3.141592653589793 / 180.0,
-            raan=45.5 * 3.141592653589793 / 180.0,
-            initial_phase=1.9,
+            altitude_km=TARGET_ALTITUDE_KM,
+            inclination=math.radians(TARGET_INCLINATION_DEG),
+            raan=math.radians(TARGET_RAAN_DEG),
+            initial_phase=TARGET_PHASE_RAD,
         ),
     }
 
@@ -125,8 +153,18 @@ def build_scenario() -> dict[str, Any]:
     geometry, the emitter posts, ``seed`` and the computed ``input_hash``.
     """
     orbits = _orbits()
-    volcano = build_volcano_scene(seed=SEED)
-    activity: tuple[BaseActivity, ...] = build_weekly_activity_schedule(seed=SEED)
+    volcano = build_volcano_scene(
+        size=VOLCANO_SIZE_CELLS,
+        cone_radius_cells=VOLCANO_CONE_RADIUS_CELLS,
+        cone_height_m=VOLCANO_CONE_HEIGHT_M,
+        lair_heat_kelvin=VOLCANO_LAIR_HEAT_K,
+        seed=SEED,
+    )
+    activity: tuple[BaseActivity, ...] = build_weekly_activity_schedule(
+        base_rate_per_hour=ACTIVITY_RATE_PER_HOUR,
+        seed=SEED,
+        num_days=ACTIVITY_DAYS,
+    )
 
     _ignore_th, thermal_z = thermal_anomaly_mask(volcano["thermal"])
     _ignore_te, terrain_z = terrain_anomaly_mask(volcano["elevation"])
@@ -241,9 +279,7 @@ def _solve_discovery(discovery: dict[str, Any]) -> dict[str, Any]:
     return {
         "true_posterior": round(float(posterior[true_cell]), 6),
         "true_rank": int(expected_discovery_effort(posterior, true_cell)),
-        "expected_effort_cells": round(
-            expected_discovery_effort(posterior, true_cell), 1
-        ),
+        "expected_effort_cells": round(posterior_expected_effort(posterior), 2),
         "prob_found_first_10": round(p_first_10, 4),
         "top_cell_posterior": round(float(posterior[top_cell]), 6),
         "num_candidate_cells": int(posterior.size),
@@ -325,7 +361,15 @@ def solve_mission(scenario: dict[str, Any]) -> dict[str, Any]:
 def _solve_rendezvous(orbits: dict[str, Any]) -> dict[str, Any]:
     chaser = orbits["chaser"]
     target = orbits["target"]
-    windows = find_rendezvous_windows(chaser, target, t_start=0.0, t_end=86400.0)
+    windows = find_rendezvous_windows(
+        chaser,
+        target,
+        t_start=0.0,
+        t_end=RENDEZVOUS_HORIZON_S,
+        dt=RENDEZVOUS_DT_S,
+        max_range_km=RENDEZVOUS_MAX_RANGE_KM,
+        min_elevation_deg=RENDEZVOUS_MIN_ELEVATION_DEG,
+    )
     transfer = hohmann_transfer(chaser.radius, target.radius)
     first = windows[0] if windows else None
     return {
@@ -360,19 +404,40 @@ def _scenario_descriptor() -> dict[str, Any]:
         "codename": CODENAME,
         "seed": SEED,
         "orbits": {
-            "chaser": {"altitude_km": 550.0, "inclination_deg": 98.2, "raan_deg": 45.0},
+            "chaser": {
+                "altitude_km": CHASER_ALTITUDE_KM,
+                "inclination_deg": CHASER_INCLINATION_DEG,
+                "raan_deg": CHASER_RAAN_DEG,
+                "phase_rad": CHASER_PHASE_RAD,
+            },
             "target": {
-                "altitude_km": 800.0,
-                "inclination_deg": 98.2,
-                "raan_deg": 45.5,
-                "phase_rad": 1.9,
+                "altitude_km": TARGET_ALTITUDE_KM,
+                "inclination_deg": TARGET_INCLINATION_DEG,
+                "raan_deg": TARGET_RAAN_DEG,
+                "phase_rad": TARGET_PHASE_RAD,
             },
         },
-        "volcano": {"size": 64, "cone_radius_cells": 20.0, "cone_height_m": 2000.0},
-        "activity": {"base_rate_per_hour": 4.0, "hours": 168},
+        "rendezvous": {
+            "horizon_s": RENDEZVOUS_HORIZON_S,
+            "dt_s": RENDEZVOUS_DT_S,
+            "max_range_km": RENDEZVOUS_MAX_RANGE_KM,
+            "min_elevation_deg": RENDEZVOUS_MIN_ELEVATION_DEG,
+        },
+        "volcano": {
+            "size": VOLCANO_SIZE_CELLS,
+            "cone_radius_cells": VOLCANO_CONE_RADIUS_CELLS,
+            "cone_height_m": VOLCANO_CONE_HEIGHT_M,
+            "lair_heat_kelvin": VOLCANO_LAIR_HEAT_K,
+        },
+        "activity": {
+            "base_rate_per_hour": ACTIVITY_RATE_PER_HOUR,
+            "hours": ACTIVITY_DAYS * 24,
+        },
         "capture": {
             "max_range_km": CAPTURE_MAX_RANGE_KM,
             "max_speed_m_s": CAPTURE_MAX_SPEED_M_S,
+            "dt_s": CAPTURE_DT_S,
+            "horizon_s": CAPTURE_HORIZON_S,
         },
         "discovery": {
             "mu_hot": DISCOVERY_MU_HOT,
@@ -390,6 +455,16 @@ def _scenario_descriptor() -> dict[str, Any]:
             "sensor_count": EMITTER_SENSOR_COUNT,
         },
     }
+
+
+def scenario_descriptor() -> dict[str, Any]:
+    """The public, JSON-serializable description of every scenario input.
+
+    This is the object the provenance hash is taken over *and* the source the
+    manuscript's experimental-setup tokens are hydrated from, so the reported
+    parameters can never drift from the parameters actually simulated.
+    """
+    return _scenario_descriptor()
 
 
 def scenario_input_hash() -> str:

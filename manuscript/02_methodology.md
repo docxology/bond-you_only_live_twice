@@ -29,7 +29,8 @@ $\Delta v$ and transfer time equal to half the transfer-orbit period.
 
 ## 2. Orbital capture and phasing
 
-Capturing the capsule is a *phasing* problem [@bate1971; @vallado2013]. The
+Capturing the capsule is a *phasing* problem [@bate1971; @vallado2013;
+@fehse2003]. The
 chaser (the capture platform on the target's orbit) must wait until the target
 leads it by exactly the angle
 
@@ -50,7 +51,10 @@ relative velocity for a physical grapple.
 ## 3. Concealed-lair detection via thermal + terrain anomaly
 
 A concealed lair is found by scoring each channel against a locally modelled
-background. A Gaussian low-pass $\tilde{g} = K_\sigma \ast g$ approximates the
+background — the standard formulation of statistical anomaly detection, where
+"anomalous" means *improbable under the fitted background model* rather than
+merely bright [@reed1990; @chandola2009]. A Gaussian low-pass
+$\tilde{g} = K_\sigma \ast g$ approximates the
 smooth natural signal, and each pixel is expressed as a standardized residual
 $z_{ij} = (g_{ij} - \tilde{g}_{ij})/\sigma_{\text{res}}$. The **thermal
 anomaly** is the one-tailed $z$ (we look for excess heat); the **terrain
@@ -76,9 +80,15 @@ posterior is the normalized product
 $$ P(c \mid \text{cues}) \propto P(c)\prod_i \text{LR}_i(c). $$
 
 Searching greedily by descending posterior gives a deterministic **search
-order**; the **expected effort** is the rank of the true site, and the
-**discovery curve** $\sum_{k} P(c_k)$ is the probability the base is found
-within the first $k$ searches.
+order** — the optimal policy for a uniform-cost, perfect-detection search
+[@stone1975]. Two distinct effort statistics are reported and must not be
+conflated: the **realised effort** is the rank of the known true site (an
+after-the-fact validation number), while the **posterior expected effort**
+$E[K] = \sum_{k} k\,P(c_k)$ is a property of the posterior alone and is the
+number a planner can quote before the base is confirmed. The **discovery
+curve** $\sum_{k} P(c_k)$ is the probability the base is found within the first
+$k$ searches. Combining heterogeneous sensors this way is the standard
+multisensor-fusion construction [@waltz1990].
 
 ## 5. Infiltration planning
 
@@ -90,23 +100,32 @@ $$ \text{cost} = 1 + w_s\,\hat{s} + w_T\,z^T_+ + w_G\,\hat{g}, $$
 combining normalized slope $\hat{s}$, positive thermal-exposure $z^T_+$,
 guard line-of-sight exposure $\hat{g}$ (an elevation-occluded visibility count
 from every watch post), and an impassable-lava mask. A deterministic 4-connected
-**A*** search [@cormen2009] with an admissible Manhattan heuristic returns the
-optimal route; a monotone greedy over the same search space provides the
-baseline, so A* optimality guarantees a non-negative cost reduction.
+**A*** search [@hart1968; @cormen2009] with an admissible Manhattan heuristic
+returns the optimal route — admissibility holds because every step costs at
+least $1$ and the heuristic counts steps, so A* is guaranteed optimal. A
+monotone greedy over the *same* search space provides the baseline, so A*
+optimality guarantees a non-negative cost reduction by construction rather
+than by a favourable choice of comparator.
 
 ## 6. Emitter localization by TDOA
 
 Passive sensors at positions $\mathbf{s}_i$ time the arrival of the base's RF
 burst. The range differences against a reference sensor,
 $d_i = \lVert e-\mathbf{s}_i\rVert - \lVert e-\mathbf{s}_0\rVert$, define
-hyperbolae whose intersection is the emitter $e$ [@skolnik2001]. The estimate
-$\hat{e}$ minimizes the residuals via Gauss–Newton on the normal equations,
-which converges to the true emitter for exact measurements.
+hyperbolae whose intersection is the emitter $e$ [@skolnik2001; @chan1994]. The
+estimate $\hat{e}$ minimizes the residuals via the Taylor-series (Gauss–Newton)
+iteration on the normal equations [@foy1976], which converges to the true
+emitter for exact measurements. Receivers report *time* differences; these are
+converted to the range differences the geometry is solved in by multiplying by
+the propagation speed, so the speed of light never enters the estimator itself.
 
 ## 7. Pattern-of-life analysis
 
-A base's activity is modelled as a Poisson point process whose instantaneous
-rate follows a diurnal envelope. The observed events are binned into a
+A base's activity is modelled as an inhomogeneous Poisson point process
+[@daley2003] whose instantaneous rate follows a diurnal envelope; events are
+drawn by rejection sampling against that envelope, so the injected rhythm is
+exactly known and the analysis can be checked against it. The observed events
+are binned into a
 $7\times 24$ hourly histogram, giving a mean daily profile
 $\bar{p}_h = \tfrac{1}{7}\sum_d h_{d,h}$. The dominant operational periodicity
 comes from the normalized autocorrelation, contiguous hours above a percentile

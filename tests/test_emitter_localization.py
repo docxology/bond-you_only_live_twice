@@ -13,10 +13,12 @@ import numpy as np
 import pytest
 
 from you_only_live_twice.emitter_localization import (
+    SPEED_OF_LIGHT,
     build_sensor_posts,
     localization_error,
     localize_tdoa,
     tdoa_measurements,
+    time_differences_to_ranges,
 )
 
 
@@ -49,6 +51,24 @@ def test_tdoa_measurements() -> None:
             emitter[0] - sensors[i][0], emitter[1] - sensors[i][1]
         ) - math.hypot(emitter[0] - sensors[0][0], emitter[1] - sensors[0][1])
         assert float(deltas[i - 1]) == pytest.approx(d_true, abs=1e-6)
+
+
+def test_time_differences_to_ranges_round_trips_through_the_solver() -> None:
+    """Receiver-side seconds convert to metres and localize to the same point."""
+    sensors = _sensors()
+    true = (7_500.0, 4_250.0)
+    range_deltas = tdoa_measurements(sensors, true)
+
+    # Simulate what a receiver actually reports: arrival-time differences.
+    time_deltas = range_deltas / SPEED_OF_LIGHT
+    recovered = time_differences_to_ranges(time_deltas)
+    np.testing.assert_allclose(recovered, range_deltas, rtol=0.0, atol=1e-6)
+
+    result = localize_tdoa(sensors, recovered, x0=np.array([0.0, 0.0]))
+    assert localization_error(result["estimate"], true) < 1e-3
+
+    with pytest.raises(ValueError):
+        time_differences_to_ranges(time_deltas, c=0.0)
 
 
 def test_localize_tdoa_recovers_true_emitter() -> None:

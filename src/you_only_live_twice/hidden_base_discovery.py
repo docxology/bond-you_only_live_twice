@@ -13,8 +13,11 @@ framework applied to a spatial hypothesis set):
   posterior probability map :math:`P(\\text{base at } c \\mid \\text{cues})`;
 * :func:`rank_search_order` turns the posterior into a deterministic search
   plan (greedy: search the most probable site first);
-* :func:`discovery_probability_curve` / :func:`expected_discovery_effort`
-  quantify how quickly the search would find the base.
+* :func:`discovery_probability_curve` / :func:`expected_discovery_effort` /
+  :func:`posterior_expected_effort` quantify how quickly the search would find
+  the base — respectively the cumulative find probability, the *realised*
+  effort against a known ground-truth site, and the posterior-weighted
+  *expected* effort with no ground truth assumed.
 
 Everything is deterministic — the cue maps come from fixed-seed scene data and
 fixed sensor models — and the module is infrastructure-free.
@@ -33,6 +36,7 @@ __all__ = [
     "expected_discovery_effort",
     "fuse_posteriors",
     "gaussian_likelihood_ratio",
+    "posterior_expected_effort",
     "rank_search_order",
     "terrain_weighted_priors",
 ]
@@ -135,6 +139,30 @@ def discovery_probability_curve(
     if max_cells is not None:
         sorted_values = sorted_values[:max_cells]
     return np.cumsum(sorted_values)
+
+
+def posterior_expected_effort(posterior: np.ndarray) -> float:
+    """Expected number of cells searched under the greedy plan, no ground truth.
+
+    Searching in descending-posterior order, the search stops at rank
+    :math:`k` with probability :math:`P(c_k)`, so the expected effort is
+
+    .. math:: E[K] = \\sum_{k=1}^{N} k\\, P(c_k).
+
+    Unlike :func:`expected_discovery_effort` — which reports the *realised*
+    rank of a known site — this is a property of the posterior alone, and is
+    the statistic to quote when the base location is not yet confirmed. A
+    perfectly concentrated posterior gives 1.0; a uniform posterior over
+    :math:`N` cells gives :math:`(N+1)/2`.
+    """
+    if posterior.ndim != 2:
+        raise ValueError("posterior must be 2-D")
+    sorted_values = np.sort(posterior.ravel())[::-1]
+    total = float(sorted_values.sum())
+    if total <= 0.0 or not math.isfinite(total):
+        raise ValueError("posterior must sum to a positive finite value")
+    ranks = np.arange(1, sorted_values.size + 1, dtype=float)
+    return float(np.dot(ranks, sorted_values) / total)
 
 
 def expected_discovery_effort(

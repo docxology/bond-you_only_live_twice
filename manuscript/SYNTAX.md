@@ -1,8 +1,4 @@
-Now let me write the manuscript SYNTAX.md, AGENTS.md and README.md, then the top-level docs.
-
-<｜DSML｜tool_calls>
-<｜DSML｜invoke name="write_file">
-<｜DSML｜parameter name="content" string="true"># Manuscript Syntax Reference (VOLCANO)
+# Manuscript Syntax Reference (VOLCANO)
 
 This guide describes the markdown that composes the manuscript. It illustrates
 *token* and *figure* syntax with literal `{{TOKEN}}` / `{{VARIABLE}}`

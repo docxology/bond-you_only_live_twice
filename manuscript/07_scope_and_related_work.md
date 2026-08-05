@@ -36,15 +36,22 @@ claims:
   transfer, and the phasing problem follow standard treatments of
   astrodynamics [@vallado2013; @bate1971].
 * Rendezvous / proximity geometry and operational feasibility windows are
-  standard in human and robotic spaceflight mission design [@wertz2011].
-* Anomaly scoring by standardized residual against a smoothed background is the
-  classical approach to thermal and terrain change detection [@hughes1971].
+  standard in human and robotic spaceflight mission design [@wertz2011;
+  @fehse2003].
+* Anomaly scoring by standardized residual against a fitted background is the
+  classical statistical formulation of anomaly detection, of which the
+  RX detector is the canonical imaging instance [@reed1990; @chandola2009].
 * Bayesian cue fusion for a hidden-site hypothesis set follows Pearl's belief
-  updating framework [@pearl1988]; passive RF emitter location by TDOA
-  follows the classical passive-geolocation treatment [@skolnik2001].
-* Infiltration routing is textbook best-first search / A* [@cormen2009].
-* Pattern-of-life / tempo analysis of activity point processes is the
-  mainstream approach in surveillance and operations research [@waltz1998].
+  updating framework [@pearl1988]; ordering the resulting posterior into a
+  search plan is classical search theory [@stone1975], and combining
+  heterogeneous sensors follows the multisensor-fusion literature [@waltz1990].
+* Passive RF emitter location by TDOA follows the Taylor-series estimator
+  [@foy1976] and the hyperbolic-location literature [@chan1994; @skolnik2001].
+* Infiltration routing is textbook best-first search / A* [@hart1968;
+  @cormen2009].
+* Modelling base activity as an inhomogeneous Poisson point process, and
+  reading tempo off its rate envelope, follows standard point-process theory
+  [@daley2003].
 
 The self-consistency guarantee — every manuscript number computed from a fixed
 seed and token-injected — follows the template's reproducible-research
