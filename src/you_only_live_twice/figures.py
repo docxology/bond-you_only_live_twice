@@ -44,6 +44,9 @@ from you_only_live_twice.terrain_anomaly import (
 __all__ = [
     "figures_dir",
     "plot_concealed_lair",
+    "plot_hidden_base_discovery",
+    "plot_infiltration_route",
+    "plot_orbital_capture",
     "plot_pattern_of_life",
     "plot_rendezvous_windows",
 ]
@@ -172,3 +175,136 @@ def plot_pattern_of_life() -> str:
     ax2.set_ylabel("Mean events/hour")
     fig.tight_layout()
     return _save(fig, "pattern_of_life.png")
+
+
+def plot_orbital_capture(
+    dt_s: float = 300.0,
+    t_start: float = 0.0,
+    t_end: float = 86400.0,
+) -> str:
+    """Plot capture range + relative speed vs time with the capture window shaded."""
+    from you_only_live_twice.orbital_capture import (
+        capture_windows,
+        relative_state,
+    )
+    from you_only_live_twice.scenario import (
+        CAPTURE_MAX_RANGE_KM,
+        CAPTURE_MAX_SPEED_M_S,
+    )
+
+    scenario = build_scenario()
+    chaser = scenario["orbits"]["chaser"]
+    target = scenario["orbits"]["target"]
+    times = list(range(int(t_start), int(t_end) + int(dt_s), int(dt_s)))
+    ranges: list[float] = []
+    speeds: list[float] = []
+    for t in times:
+        rho, rho_dot = relative_state(chaser, target, float(t))
+        ranges.append(float(math.hypot(rho[0], rho[1]) / 1e3))
+        speeds.append(float(math.hypot(rho_dot[0], rho_dot[1])))
+
+    windows = capture_windows(
+        chaser,
+        target,
+        t_start=t_start,
+        t_end=t_end,
+        dt=dt_s,
+        max_range_km=CAPTURE_MAX_RANGE_KM,
+        max_speed_m_s=CAPTURE_MAX_SPEED_M_S,
+    )
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 6), sharex=True)
+    for win in windows:
+        for ax in (ax1, ax2):
+            ax.axvspan(win.start_s, win.end_s, color="tab:olive", alpha=0.25)
+    ax1.plot(times, ranges, color="tab:blue")
+    ax1.set_ylabel("Slant range (km)")
+    ax1.set_title("Orbital capture envelope — VOLCANO")
+    ax2.plot(times, speeds, color="tab:red")
+    ax2.set_ylabel("Relative speed (m/s)")
+    ax2.set_xlabel("Time since mission start (s)")
+    ax2.axhline(
+        CAPTURE_MAX_SPEED_M_S, color="grey", ls="--", lw=0.8, label="max grapple speed"
+    )
+    ax2.legend(loc="best", fontsize="small")
+    fig.tight_layout()
+    return _save(fig, "orbital_capture.png")
+
+
+def plot_hidden_base_discovery() -> str:
+    """Plot the posterior map and search rank order with the true base marked."""
+
+    scenario = build_scenario()
+    posterior = scenario["discovery"]["posterior"]
+    true_cell = scenario["discovery"]["true_cell"]
+
+    fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+    im = ax.imshow(posterior, cmap="inferno")
+    fig.colorbar(im, ax=ax, shrink=0.85, label="P(base at cell)")
+    if true_cell is not None:
+        ax.plot(
+            true_cell[1],
+            true_cell[0],
+            marker="x",
+            color="cyan",
+            ms=12,
+            mew=2.5,
+            label="true base",
+        )
+    ax.set_title("Hidden-base discovery posterior — VOLCANO")
+    ax.set_xlabel("Column")
+    ax.set_ylabel("Row")
+    ax.legend(loc="best", fontsize="small")
+    fig.tight_layout()
+    return _save(fig, "hidden_base_discovery.png")
+
+
+def plot_infiltration_route() -> str:
+    """Plot the combined cost field with the optimal infiltration route overlaid."""
+    from you_only_live_twice.infiltration_planning import combined_cost_field
+
+    scenario = build_scenario()
+    volcano = scenario["volcano"]
+    infil = scenario["infiltration"]
+    thermal_z = scenario["thermal_z"]
+
+    cost = combined_cost_field(
+        volcano["elevation"],
+        thermal_z,
+        infil["guard_posts"],
+        impassable=infil["impassable"],
+    )
+    from you_only_live_twice.infiltration_planning import astar_path
+
+    route = astar_path(cost, infil["start"], infil["goal"])
+    rows = [p[0] for p in route.path]
+    cols = [p[1] for p in route.path]
+
+    fig, ax = plt.subplots(1, 1, figsize=(7, 6))
+    im = ax.imshow(cost, cmap="terrain")
+    fig.colorbar(im, ax=ax, shrink=0.85, label="movement cost")
+    ax.plot(cols, rows, color="tab:red", lw=2.0, label="optimal route")
+    ax.plot(
+        infil["start"][1],
+        infil["start"][0],
+        marker="o",
+        color="tab:green",
+        ms=9,
+        label="entry",
+    )
+    ax.plot(
+        infil["goal"][1],
+        infil["goal"][0],
+        marker="*",
+        color="tab:cyan",
+        ms=14,
+        label="lair",
+    )
+    for post in infil["guard_posts"]:
+        ax.plot(post[1], post[0], marker="^", color="tab:orange", ms=8)
+    ax.set_title("Infiltration route into the lair — VOLCANO")
+    ax.set_xlabel("Column")
+    ax.set_ylabel("Row")
+    ax.legend(loc="best", fontsize="small")
+    fig.tight_layout()
+    return _save(fig, "infiltration_route.png")

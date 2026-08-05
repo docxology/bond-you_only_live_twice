@@ -12,13 +12,19 @@ from pathlib import Path
 from you_only_live_twice.figures import (
     figures_dir,
     plot_concealed_lair,
+    plot_hidden_base_discovery,
+    plot_infiltration_route,
+    plot_orbital_capture,
     plot_pattern_of_life,
     plot_rendezvous_windows,
 )
 
 _EXPECTED = {
     "rendezvous_windows.png",
+    "orbital_capture.png",
     "concealed_lair_detection.png",
+    "hidden_base_discovery.png",
+    "infiltration_route.png",
     "pattern_of_life.png",
 }
 
@@ -30,7 +36,10 @@ def test_figures_dir_exists() -> None:
 def test_render_all_figures() -> None:
     paths = [
         plot_rendezvous_windows(dt_s=300.0),
+        plot_orbital_capture(dt_s=300.0),
         plot_concealed_lair(),
+        plot_hidden_base_discovery(),
+        plot_infiltration_route(),
         plot_pattern_of_life(),
     ]
     names = {Path(p).name for p in paths}

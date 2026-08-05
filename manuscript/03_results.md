@@ -19,6 +19,19 @@ For an intercept, a coplanar Hohmann transfer burns a total of
 {{RENDEZVOUS_DELTA_V_M_S}} m/s and takes {{RENDEZVOUS_TRANSFER_TIME_S}}
 seconds.
 
+## Orbital capture
+
+Adding the capture envelope (range + relative-speed constraint) yields
+{{CAPTURE_NUM_WINDOWS}} capture window(s), the first opening at
+{{CAPTURE_FIRST_START_S}} seconds and lasting
+{{CAPTURE_FIRST_DURATION_S}} seconds; the grapple still needs a
+velocity-matching burn of {{CAPTURE_GRAPPLE_DV_M_S}} m/s. The phasing solution
+requires a {{CAPTURE_PHASING_LEAD_DEG}}° lead angle, reached after a
+{{CAPTURE_PHASING_WAIT_S}} second wait. Figure [@fig:capture] shows the range
+and relative-speed profile with the capture window shaded.
+
+![Orbital capture: slant range (top) and relative speed (bottom) vs time, with the grapple window shaded.](../output/figures/orbital_capture.png){#fig:capture}
+
 ## Concealed-lair detection
 
 The thermal and terrain anomaly fusion surfaces
@@ -29,6 +42,36 @@ The thermal and terrain anomaly fusion surfaces
 fused anomaly map with the top candidate boxed.
 
 ![Concealed-lair detection: thermal scene, terrain scene, and fused anomaly score with the top candidate region marked.](../output/figures/concealed_lair_detection.png){#fig:lair}
+
+## Hidden-base discovery
+
+Fusing the thermal, terrain and RF cues with a terrain-weighted prior over the
+{{DISCOVERY_CANDIDATE_CELLS}} candidate sites ranks the true base first
+(rank {{DISCOVERY_TRUE_RANK}}) with posterior probability
+{{DISCOVERY_TRUE_POSTERIOR}}; the search finds it within ten sites with
+probability {{DISCOVERY_P_FIRST_10}}, an expected effort of
+{{DISCOVERY_EFFORT_CELLS}} cell(s). Figure [@fig:discovery] shows the posterior
+map, a single concentrated peak on the true base.
+
+![Hidden-base discovery: posterior probability map with the true base marked.](../output/figures/hidden_base_discovery.png){#fig:discovery}
+
+## Infiltration planning
+
+The slope/thermal/guard cost surface routes the agent from the rim to the lair
+in {{INFILTRATION_PATH_LENGTH}} steps at a total cost of
+{{INFILTRATION_ROUTE_COST}}, against a greedy baseline of
+{{INFILTRATION_BASELINE_COST}} — a {{INFILTRATION_REDUCTION}} cost reduction —
+accruing a thermal exposure of {{INFILTRATION_EXPOSURE}}. Figure
+[@fig:infiltration] shows the cost field and the optimal route.
+
+![Infiltration route: movement-cost field with the optimal route (red), entry (green), lair (cyan) and guard posts (orange).](../output/figures/infiltration_route.png){#fig:infiltration}
+
+## Emitter localization
+
+Passive TDOA multilateration over {{EMITTER_SENSORS}} sensors fixes the base's
+transmitter to within {{EMITTER_ERROR_M}} m in {{EMITTER_ITERATIONS}}
+iterations, confirming the radio-derived site matches the imagery-derived
+site.
 
 ## Pattern of life
 
@@ -44,7 +87,7 @@ shaded.
 
 ## End-to-end mission
 
-The BOND-API provider (codename {{BOND_CODENAME}}) executes all three
+The BOND-API provider (codename {{BOND_CODENAME}}) executes all seven
 capabilities in a single deterministic run against {{BOND_NUM_DATACLASSES}}
 frozen protocol dataclasses across {{BOND_NUM_PROVIDER_METHODS}} provider
 methods, returning full provenance.

@@ -33,7 +33,7 @@ def main() -> int:
             isinstance(provider, ProtocolProvider),
         ),
         ("film slug matches", provider.film == "you_only_live_twice"),
-        ("brief resolves", len(provider.brief().objectives) == 3),
+        ("brief resolves", len(provider.brief().objectives) == 6),
         ("gadgets register", _gadget_count() > 0),
     ]
     ok = True

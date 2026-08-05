@@ -1,6 +1,6 @@
 # Methodology
 
-This section states the mathematics behind each of the three capabilities.
+This section states the mathematics behind each of the seven capabilities.
 Everything is standard, deterministic, and free of hidden randomness.
 
 ## 1. Rendezvous / intercept window solving
@@ -14,72 +14,101 @@ $$ n = \sqrt{\frac{\mu}{a^3}} $$
 and the position and velocity in the Earth-centred inertial (ECI) frame follow
 from the classical orbital elements $(a, e=0, i, \Omega, \nu)$ via the standard
 perifocal → ECI 3-1-3 rotation. The true anomaly advances linearly,
-
-$$ \nu(t) = u_0 + n\,t, $$
-
-so a candidate orbit is fully described by its altitude (radius), inclination,
-RAAN, and initial argument of latitude $u_0$.
+$\nu(t) = u_0 + n t$, so a candidate orbit is fully described by its altitude,
+inclination, RAAN, and initial argument of latitude $u_0$.
 
 Given the chaser state $(\mathbf{r}_c, \mathbf{v}_c)$ and the target position
-$\mathbf{r}_t$, the line-of-sight vector is $\boldsymbol{\rho} = \mathbf{r}_t -
-\mathbf{r}_c$ with slant range
+$\mathbf{r}_t$, the line-of-sight vector is
+$\boldsymbol{\rho} = \mathbf{r}_t - \mathbf{r}_c$ with slant range
+$\rho = \lVert \mathbf{r}_t - \mathbf{r}_c \rVert$ and target elevation
+$\varepsilon$ above the chaser's local horizontal plane. A **rendezvous
+window** is a contiguous interval on which $\rho \le \rho_\text{max}$ and
+$\varepsilon \ge \varepsilon_\text{min}$. The intercept burn is a coplanar
+Hohmann transfer with the two-impulse budget
+$\Delta v$ and transfer time equal to half the transfer-orbit period.
 
-$$ \rho = \lVert \mathbf{r}_t - \mathbf{r}_c \rVert $$
+## 2. Orbital capture and phasing
 
-and the target elevation $\varepsilon$ above the chaser's local horizontal
-plane (the plane perpendicular to the local radial direction
-$\hat{\mathbf{r}}_c$) is
+Capturing the capsule is a *phasing* problem [@bate1971; @vallado2013]. The
+chaser (the capture platform on the target's orbit) must wait until the target
+leads it by exactly the angle
 
-$$ \varepsilon = \operatorname{atan2}\!\left( \boldsymbol{\rho}\cdot\hat{\mathbf{r}}_c,\,
-   \lVert \boldsymbol{\rho} - (\boldsymbol{\rho}\cdot\hat{\mathbf{r}}_c)\hat{\mathbf{r}}_c \rVert \right). $$
+$$ \lambda = (\pi - n_t T_t) \bmod 2\pi, $$
 
-A **rendezvous window** is a contiguous time interval on which both
-$\rho \le \rho_\text{max}$ and $\varepsilon \ge \varepsilon_\text{min}$ hold.
-The solver steps the clock, propagates both satellites, and merges consecutive
-satisfying samples into windows. For the intercept burn, a coplanar Hohmann
-transfer between the two circular orbits yields the two-impulse $\Delta v$
-budget
+where $T_t$ is the Hohmann transfer time and $n_t$ the target mean motion — the
+transfer sweeps $\pi$ rad, so the target must start ahead by
+$\pi - n_t T_t$. The relative phase evolves as
+$\phi(t) = \phi_0 + (n_t - n_c)t$, so the **phasing wait time** is the first
+non-negative solution of $\phi(t) \equiv \lambda \pmod{2\pi}$.
 
-$$ \Delta v = \left|\sqrt{\mu\left(\tfrac{2}{a_1}-\tfrac{1}{a_t}\right)}-\sqrt{\tfrac{\mu}{a_1}}\right|
-   + \left|\sqrt{\tfrac{\mu}{a_2}}-\sqrt{\mu\left(\tfrac{2}{a_2}-\tfrac{1}{a_t}\right)}\right| $$
+A **capture window** is a contiguous interval where the capsule is inside the
+grapple envelope (range constraint) *and* slow enough that the platform can
+match its velocity; the **velocity-matching burn** is exactly the relative
+speed $\lVert \mathbf{v}_t - \mathbf{v}_c\rVert$ at that epoch, nulling the
+relative velocity for a physical grapple.
 
-with transfer semi-major axis $a_t = (a_1+a_2)/2$ and transfer time equal to
-half the transfer-orbit period.
-
-## 2. Concealed-lair detection via thermal + terrain anomaly
+## 3. Concealed-lair detection via thermal + terrain anomaly
 
 A concealed lair is found by scoring each channel against a locally modelled
-background. A Gaussian low-pass
+background. A Gaussian low-pass $\tilde{g} = K_\sigma \ast g$ approximates the
+smooth natural signal, and each pixel is expressed as a standardized residual
+$z_{ij} = (g_{ij} - \tilde{g}_{ij})/\sigma_{\text{res}}$. The **thermal
+anomaly** is the one-tailed $z$ (we look for excess heat); the **terrain
+anomaly** is the magnitude $|z|$ (a lair may be a raised shelf *or* an
+excavated depression). The two maps are fused with weights
+$w_T, w_D$ as $s_{ij} = (w_T z^T_{ij} + w_D z^D_{ij})/(w_T + w_D)$.
+Connected components of the thresholded fused map are labelled and reported as
+candidate regions, ranked by peak fused score.
 
-$$ \tilde{g} = K_\sigma * g $$
+## 4. Hidden-base discovery by Bayesian cue fusion
 
-approximates the smooth natural signal (the thermal lapse with altitude, the
-smooth volcanic cone). Each pixel is then expressed as a standardized residual,
+To decide *where* the base is before a strike, the mission treats each of the
+$N$ candidate cells as a hypothesis and applies Bayesian belief updating
+[@pearl1988]. Cell $c$ carries a prior $P(c) \propto 1 + \beta\max(0,z^D_c)$
+(terrain anomalies raise the prior). Each sensor cue $z$ is modelled as a
+Gaussian measurement with likelihood ratio
 
-$$ z_{ij} = \frac{g_{ij} - \tilde{g}_{ij}}{\sigma_{\text{res}}}, $$
+$$ \text{LR}(z) = \exp\!\left(\frac{\mu z}{\sigma^2}\right), $$
 
-where $\sigma_{\text{res}}$ is the standard deviation of the residuals over the
-map. The **thermal anomaly** is the one-tailed $z$ (we look for excess heat); the
-**terrain anomaly** is the magnitude $|z|$ (a lair may be a raised shelf *or* an
-excavated depression, both of which deviate from the smooth cone). The two maps
-are fused with weights $w_T, w_D$ as
+so a neutral cell maps to 1, a hot cell to $>1$, a cold cell to $<1$. The
+posterior is the normalized product
 
-$$ s_{ij} = \frac{w_T\, z^T_{ij} + w_D\, z^D_{ij}}{w_T + w_D}. $$
+$$ P(c \mid \text{cues}) \propto P(c)\prod_i \text{LR}_i(c). $$
 
-Connected components of the thresholded fused map are labelled by flood fill
-and reported as candidate regions, ranked by peak fused score.
+Searching greedily by descending posterior gives a deterministic **search
+order**; the **expected effort** is the rank of the true site, and the
+**discovery curve** $\sum_{k} P(c_k)$ is the probability the base is found
+within the first $k$ searches.
 
-## 3. Pattern-of-life analysis
+## 5. Infiltration planning
+
+The agent must reach the lair core while minimizing detection risk. Each cell
+carries a movement cost
+
+$$ \text{cost} = 1 + w_s\,\hat{s} + w_T\,z^T_+ + w_G\,\hat{g}, $$
+
+combining normalized slope $\hat{s}$, positive thermal-exposure $z^T_+$,
+guard line-of-sight exposure $\hat{g}$ (an elevation-occluded visibility count
+from every watch post), and an impassable-lava mask. A deterministic 4-connected
+**A*** search [@cormen2009] with an admissible Manhattan heuristic returns the
+optimal route; a monotone greedy over the same search space provides the
+baseline, so A* optimality guarantees a non-negative cost reduction.
+
+## 6. Emitter localization by TDOA
+
+Passive sensors at positions $\mathbf{s}_i$ time the arrival of the base's RF
+burst. The range differences against a reference sensor,
+$d_i = \lVert e-\mathbf{s}_i\rVert - \lVert e-\mathbf{s}_0\rVert$, define
+hyperbolae whose intersection is the emitter $e$ [@skolnik2001]. The estimate
+$\hat{e}$ minimizes the residuals via Gauss–Newton on the normal equations,
+which converges to the true emitter for exact measurements.
+
+## 7. Pattern-of-life analysis
 
 A base's activity is modelled as a Poisson point process whose instantaneous
-rate follows a diurnal envelope (a quiet overnight floor plus morning and
-evening operating peaks). The observed events are binned into a
-$7\times 24$ hourly histogram $h_{d,h}$, giving a mean daily profile
-
-$$ \bar{p}_h = \frac{1}{7}\sum_{d=0}^{6} h_{d,h}. $$
-
-The dominant operational periodicity is read from the normalized
-autocorrelation of the weekly series, and contiguous hours of the daily profile
-above a given percentile are reported as **peak operating windows**. Tempo is
-classified from the mean event rate, and duty cycle is the fraction of hourly
-bins containing activity.
+rate follows a diurnal envelope. The observed events are binned into a
+$7\times 24$ hourly histogram, giving a mean daily profile
+$\bar{p}_h = \tfrac{1}{7}\sum_d h_{d,h}$. The dominant operational periodicity
+comes from the normalized autocorrelation, contiguous hours above a percentile
+are **peak operating windows**, and tempo is classified from the mean event
+rate.

@@ -17,7 +17,11 @@ to the BOND-API ``MissionProvider`` protocol (codename VOLCANO).
 from __future__ import annotations
 
 __all__ = [
+    "emitter_localization",
+    "hidden_base_discovery",
+    "infiltration_planning",
     "mission",
+    "orbital_capture",
     "pattern_of_life",
     "rendezvous_windows",
     "scenario",

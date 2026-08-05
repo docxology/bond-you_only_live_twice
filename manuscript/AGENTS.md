@@ -15,8 +15,8 @@ and the figure protocol.
 | --- | --- | --- |
 | `00_abstract.md` | Abstract; result summary | all headline result tokens |
 | `01_introduction.md` | Mission setup, reader's guide | none |
-| `02_methodology.md` | Mathematics of the three capabilities | none |
-| `03_results.md` | All results + all figures | figure refs `rendezvous`, `lair`, `pattern` |
+| `02_methodology.md` | Mathematics of the seven capabilities | none |
+| `03_results.md` | All results + all figures | figure refs `rendezvous`, `capture`, `lair`, `discovery`, `infiltration`, `pattern` |
 | `04_conclusion.md` | Summary | none |
 | `05_experimental_setup.md` | Scenario params, environment | setup + env tokens |
 | `06_reproducibility.md` | Determinism, artifacts, test gate | provenance tokens |
@@ -38,8 +38,9 @@ contain literal placeholders).
 
 ## Figure protocol
 
-The three figures live under `output/figures/` and are cross-referenced with
-`{#fig:label}` labels: `rendezvous`, `lair`, `pattern`. See `SYNTAX.md`.
+The six figures live under `output/figures/` and are cross-referenced with
+`{#fig:label}` labels: `rendezvous`, `capture`, `lair`, `discovery`,
+`infiltration`, `pattern`. See `SYNTAX.md`.
 
 ## Editing workflow
 

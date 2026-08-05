@@ -34,7 +34,7 @@ def test_provider_film_and_identity() -> None:
     assert provider.film == "you_only_live_twice"
     brief = provider.brief()
     assert brief.codename == "VOLCANO"
-    assert len(brief.objectives) == 3
+    assert len(brief.objectives) == 6
     assert brief.assets
     assert brief.constraints
 
@@ -49,24 +49,38 @@ def test_full_mission_flow_is_deterministic() -> None:
     assert outcome.provenance.seed == 1967
     assert len(outcome.provenance.input_hash) == 64
 
-    # Determinism: same scalar results and identical provenance.
+    # Determinism: identical provenance and matching scalar sub-results.
     assert outcome.provenance == debrief_b.outcome.provenance
-    assert outcome.results["rendezvous"] == debrief_b.outcome.results["rendezvous"]
-    assert (
-        outcome.results["concealed_lair"] == debrief_b.outcome.results["concealed_lair"]
-    )
+    for key in (
+        "rendezvous",
+        "capture",
+        "concealed_lair",
+        "hidden_base_discovery",
+        "infiltration",
+        "emitter_localization",
+    ):
+        assert outcome.results[key] == debrief_b.outcome.results[key]
     assert (
         outcome.results["pattern_of_life"]["num_events"]
         == debrief_b.outcome.results["pattern_of_life"]["num_events"]
     )
     assert debrief_a.lessons == debrief_b.lessons
 
-    # All three capabilities present with sane values.
+    # All capabilities present with sane values.
     rv = outcome.results["rendezvous"]
     assert rv["num_windows"] >= 0
     assert rv["delta_v_total_m_s"] > 0.0
+    cap = outcome.results["capture"]
+    assert "num_windows" in cap and "grapple_delta_v_m_s" in cap
     lair = outcome.results["concealed_lair"]
     assert lair["num_candidates"] >= 0
+    disc = outcome.results["hidden_base_discovery"]
+    assert disc["num_candidate_cells"] > 0
+    assert disc["true_rank"] >= 1
+    infil = outcome.results["infiltration"]
+    assert infil["cost_reduction"] >= -1e-9
+    emit = outcome.results["emitter_localization"]
+    assert emit["error_m"] >= 0.0
     pat = outcome.results["pattern_of_life"]
     assert pat["num_events"] > 0
     assert pat["tempo"] in {"low", "medium", "high"}
@@ -75,11 +89,27 @@ def test_full_mission_flow_is_deterministic() -> None:
 def test_provider_plan_steps() -> None:
     provider = MissionProvider()
     plan = provider.plan(provider.brief())
-    assert len(plan.steps) == 3
+    assert len(plan.steps) == 7
     names = [s.name for s in plan.steps]
-    assert names == ["rendezvous", "lair", "pattern"]
+    assert names == [
+        "rendezvous",
+        "capture",
+        "lair",
+        "discovery",
+        "infiltration",
+        "emitter",
+        "pattern",
+    ]
     actions = [s.action for s in plan.steps]
-    assert actions == ["solve_windows", "detect_concealed_lair", "pattern_summary"]
+    assert actions == [
+        "solve_windows",
+        "solve_capture",
+        "detect_concealed_lair",
+        "fuse_cues",
+        "plan_route",
+        "localize_emitter",
+        "pattern_summary",
+    ]
 
 
 def test_provider_recon_findings() -> None:
@@ -103,7 +133,10 @@ def test_evidence_notes_branches() -> None:
         _evidence_notes(
             {
                 "rendezvous": {"num_windows": 0},
+                "capture": {"num_windows": 0},
                 "concealed_lair": {},
+                "hidden_base_discovery": {},
+                "infiltration": {},
                 "pattern_of_life": {},
             }
         )
@@ -113,12 +146,18 @@ def test_evidence_notes_branches() -> None:
     notes = _evidence_notes(
         {
             "rendezvous": {"num_windows": 2, "first_window_start_s": 100.0},
+            "capture": {"num_windows": 1, "grapple_delta_v_m_s": 900.0},
             "concealed_lair": {"top_fused_score": 5.0},
+            "hidden_base_discovery": {"true_rank": 1, "num_candidate_cells": 4096},
+            "infiltration": {"cost_reduction": 0.3},
             "pattern_of_life": {"tempo": "high"},
         }
     )
-    assert len(notes) == 3
+    assert len(notes) == 6
     assert any("2 rendezvous" in n for n in notes)
+    assert any("capture window" in n for n in notes)
+    assert any("rank 1 of 4096" in n for n in notes)
+    assert any("cuts cost by 30.0%" in n for n in notes)
 
 
 def test_gadget_registry_registration() -> None:
@@ -129,11 +168,18 @@ def test_gadget_registry_registration() -> None:
     assert {
         "rendezvous_solver",
         "intercept_budget",
+        "capture_solver",
         "lair_detector",
+        "discovery_engine",
+        "search_ranker",
+        "route_planner",
+        "emitter_locator",
         "pattern_analyzer",
     } <= set(names)
     # The gadgets resolve to callables.
     assert callable(registry.lookup("you_only_live_twice", "rendezvous_solver"))
+    assert callable(registry.lookup("you_only_live_twice", "route_planner"))
+    assert callable(registry.lookup("you_only_live_twice", "emitter_locator"))
     assert self_film() == "you_only_live_twice"
 
 

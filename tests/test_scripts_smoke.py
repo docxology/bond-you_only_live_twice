@@ -61,7 +61,10 @@ def test_render_figures_writes_pngs() -> None:
     assert proc.returncode == 0, proc.stderr
     for name in (
         "rendezvous_windows.png",
+        "orbital_capture.png",
         "concealed_lair_detection.png",
+        "hidden_base_discovery.png",
+        "infiltration_route.png",
         "pattern_of_life.png",
     ):
         assert (_ROOT / "output" / "figures" / name).is_file()

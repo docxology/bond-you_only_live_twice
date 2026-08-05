@@ -46,11 +46,15 @@ def run_phase(phase: str) -> None:
             print(f"[VOLCANO] plan   step={step.name} action={step.action}")
     elif phase == "execute":
         outcome = provider.execute(provider.plan(provider.brief()))
+        res = outcome.results
         print(
             f"[VOLCANO] execute success={outcome.success} "
-            f"rendezvous_windows={outcome.results['rendezvous']['num_windows']} "
-            f"lair_candidates={outcome.results['concealed_lair']['num_candidates']} "
-            f"pattern_tempo={outcome.results['pattern_of_life']['tempo']}"
+            f"rendezvous_windows={res['rendezvous']['num_windows']} "
+            f"capture_windows={res['capture']['num_windows']} "
+            f"lair_candidates={res['concealed_lair']['num_candidates']} "
+            f"discovery_rank={res['hidden_base_discovery']['true_rank']} "
+            f"infiltration_reduction={res['infiltration']['cost_reduction']} "
+            f"pattern_tempo={res['pattern_of_life']['tempo']}"
         )
         print(
             f"[VOLCANO] execute provenance input_hash={outcome.provenance.input_hash[:16]} seed={outcome.provenance.seed}"

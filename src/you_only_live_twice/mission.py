@@ -1,15 +1,15 @@
 """VOLCANO — the BOND-API ``MissionProvider`` for You Only Live Twice.
 
-This is the thin adapter between the film's pure domain core
-(:mod:`you_only_live_twice.rendezvous_windows`, ``terrain_anomaly``,
-``pattern_of_life``) and the frozen BOND-API mission protocol. It exposes a
-:class:`MissionProvider` at module top level under the name the discovery
-contract expects, and it registers the film's analytical *gadgets* with the
-:class:`bond_api.registry.GadgetRegistry`.
+This is the thin adapter between the film's pure domain core and the frozen
+BOND-API mission protocol. It exposes a :class:`MissionProvider` at module top
+level under the name the discovery contract expects, and it registers the
+film's analytical *gadgets* with the :class:`bond_api.registry.GadgetRegistry`.
 
 The domain modules stay infrastructure-free and importable without BOND-API;
 only this module (and the derivations in :mod:`you_only_live_twice.figures`)
-depend on the protocol.
+depend on the protocol. All actual computation lives in
+:func:`you_only_live_twice.scenario.solve_mission`, the single source shared by
+this adapter and the manuscript token generator.
 """
 
 from __future__ import annotations
@@ -32,12 +32,15 @@ from bond_api.protocol import (
 )
 from bond_api.registry import GadgetRegistry
 
-from you_only_live_twice.pattern_of_life import (
-    BaseActivity,
-    pattern_summary,
+from you_only_live_twice.emitter_localization import localize_tdoa
+from you_only_live_twice.hidden_base_discovery import (
+    expected_discovery_effort,
+    rank_search_order,
 )
+from you_only_live_twice.infiltration_planning import plan_infiltration
+from you_only_live_twice.orbital_capture import capture_windows
+from you_only_live_twice.pattern_of_life import pattern_summary
 from you_only_live_twice.rendezvous_windows import (
-    CircularOrbit,
     find_rendezvous_windows,
     hohmann_transfer,
 )
@@ -46,6 +49,7 @@ from you_only_live_twice.scenario import (
     PACKAGE_VERSION,
     SEED,
     build_scenario,
+    solve_mission,
 )
 from you_only_live_twice.terrain_anomaly import detect_concealed_lair
 
@@ -57,21 +61,25 @@ __version__ = PACKAGE_VERSION
 class MissionProvider:
     """Deterministic BOND-API mission provider for codename VOLCANO.
 
-    Executes the three special-agent capabilities — orbital rendezvous
-    windows, concealed-lair detection, and pattern-of-life analysis — over a
-    fixed, reproducible scenario.
+    Executes seven special-agent capabilities — orbital rendezvous windows,
+    orbital capture & phasing, concealed-lair detection, hidden-base discovery,
+    infiltration planning, emitter localisation, and pattern-of-life analysis —
+    over a fixed, reproducible scenario.
     """
 
     film = "you_only_live_twice"
 
     def brief(self) -> MissionBrief:
-        """Declare the VOLCANO mission: three special-agent objectives."""
+        """Declare the VOLCANO mission: the special-agent objectives."""
         return MissionBrief(
             film=self.film,
             codename=CODENAME,
             objectives=(
                 "solve space-capsule rendezvous and intercept windows",
+                "engineer the orbital capture and phasing of the enemy capsule",
                 "detect the concealed volcano-camouflaged lair",
+                "localize the hidden base by Bayesian cue fusion and RF emission",
+                "plan the infiltration route into the lair",
                 "characterize the adversary base pattern of life",
             ),
             assets=(
@@ -82,6 +90,11 @@ class MissionProvider:
                 ),
                 Asset(kind="imagery", name="volcano_scene", payload={"size": 64}),
                 Asset(kind="schedule", name="activity_events", payload={"hours": 168}),
+                Asset(
+                    kind="signals",
+                    name="tdoa_sensors",
+                    payload={"sensor_count": 5},
+                ),
             ),
             constraints=(
                 Constraint(
@@ -95,17 +108,21 @@ class MissionProvider:
         )
 
     def recon(self, request: ReconRequest) -> ReconReport:
-        """Survey the request, the three assets, and the determinism constraint."""
+        """Survey the request, the mission assets, and the constraints."""
         return ReconReport(
             findings=(
                 Finding(label="goal", detail=request.goal),
                 Finding(
                     label="orbital",
-                    detail="chaser and target circular orbits are known",
+                    detail="chaser and target circular orbits are known; phasing solvable",
                 ),
                 Finding(
                     label="imagery",
                     detail="thermal + terrain volcano scene is available",
+                ),
+                Finding(
+                    label="signals",
+                    detail="passive TDOA sensors bracket the suspected base field",
                 ),
                 Finding(
                     label="schedule",
@@ -116,43 +133,54 @@ class MissionProvider:
         )
 
     def plan(self, brief: MissionBrief) -> MissionPlan:
-        """Plan the three analytical steps: rendezvous, lair, pattern-of-life."""
+        """Plan the analytical steps: rendezvous, capture, lair, discovery, infiltration, emitter, pattern."""
         return MissionPlan(
             steps=(
                 Step(
                     name="rendezvous",
                     action="solve_windows",
-                    params={"objectives": len(brief.objectives)},
+                    params={"objective": brief.objectives[0]},
+                ),
+                Step(
+                    name="capture",
+                    action="solve_capture",
+                    params={"objective": brief.objectives[1]},
                 ),
                 Step(
                     name="lair",
                     action="detect_concealed_lair",
-                    params={"source": brief.assets[1].name},
+                    params={"objective": brief.objectives[2]},
+                ),
+                Step(
+                    name="discovery",
+                    action="fuse_cues",
+                    params={"objective": brief.objectives[3]},
+                ),
+                Step(
+                    name="infiltration",
+                    action="plan_route",
+                    params={"objective": brief.objectives[4]},
+                ),
+                Step(
+                    name="emitter",
+                    action="localize_emitter",
+                    params={"source": brief.assets[3].name},
                 ),
                 Step(
                     name="pattern",
                     action="pattern_summary",
-                    params={"source": brief.assets[2].name},
+                    params={"objective": brief.objectives[5]},
                 ),
             )
         )
 
     def execute(self, plan: MissionPlan) -> MissionOutcome:
-        """Run all three capabilities over the fixed scenario and report metrics."""
+        """Run all capabilities over the fixed scenario and report metrics."""
         scenario = build_scenario()
-        orbits: dict[str, CircularOrbit] = scenario["orbits"]
-        volcano = scenario["volcano"]
-        activity: tuple[BaseActivity, ...] = scenario["activity"]
-
-        rendezvous_results = _solve_rendezvous(orbits["chaser"], orbits["target"])
-        lair_results = _detect_lair(volcano["thermal"], volcano["elevation"])
-        pattern_results = pattern_summary(activity)
-
+        analysis = solve_mission(scenario)
         results: dict[str, Any] = {
             "steps_completed": len(plan.steps),
-            "rendezvous": rendezvous_results,
-            "concealed_lair": lair_results,
-            "pattern_of_life": pattern_results,
+            **analysis,
             "seed": SEED,
         }
         return MissionOutcome(
@@ -174,48 +202,13 @@ class MissionProvider:
             lessons=(
                 "a concealed lair leaks heat and flattens terrain, even when camouflaged",
                 "rendezvous windows are driven by relative orbital phase, not absolute motion",
+                "orbital capture is a phasing problem: wait for the right lead angle, then match velocity",
+                "a hidden base is found by fusing weak sensors, not by any single one",
                 "a base's pattern of life is best read as a weekly, diurnal rhythm",
                 "deterministic provenance makes every outcome independently auditable",
                 *tuple(notes),
             ),
         )
-
-
-def _solve_rendezvous(chaser: CircularOrbit, target: CircularOrbit) -> dict[str, Any]:
-    """Compute rendezvous windows and an intercept delta-v budget."""
-    windows = find_rendezvous_windows(chaser, target, t_start=0.0, t_end=86400.0)
-    transfer = hohmann_transfer(chaser.radius, target.radius)
-    first = windows[0] if windows else None
-
-    def ev(e: CircularOrbit) -> float:
-        return e.initial_phase
-
-    return {
-        "num_windows": len(windows),
-        "first_window_start_s": round(first.start_s, 1) if first else None,
-        "first_window_duration_s": round(first.duration_s, 1) if first else None,
-        "first_window_peak_elevation_deg": round(first.peak_elevation_deg, 2)
-        if first
-        else None,
-        "chaser_phase_rad": round(ev(chaser), 4),
-        "target_phase_rad": round(ev(target), 4),
-        "delta_v_total_m_s": round(transfer["delta_v_total"], 1),
-        "transfer_time_s": round(transfer["transfer_time_s"], 1),
-    }
-
-
-def _detect_lair(thermal: Any, elevation: Any) -> dict[str, Any]:
-    """Detect concealed-lair candidate regions and summarize the top hit."""
-    regions, meta = detect_concealed_lair(thermal, elevation)
-    top = regions[0] if regions else None
-    return {
-        "num_candidates": len(regions),
-        "top_fused_score": round(top.fused_score, 3) if top else None,
-        "top_thermal_score": round(top.thermal_score, 3) if top else None,
-        "top_terrain_score": round(top.terrain_score, 3) if top else None,
-        "top_area_cells": top.area_cells if top else 0,
-        "num_components": meta["num_components"],
-    }
 
 
 def _evidence_notes(results: dict[str, Any]) -> tuple[str, ...]:
@@ -227,9 +220,26 @@ def _evidence_notes(results: dict[str, Any]) -> tuple[str, ...]:
             f"{rendezvous['num_windows']} rendezvous window(s), "
             f"closest within {rendezvous['first_window_start_s']} s"
         )
+    capture = results.get("capture", {})
+    if capture.get("num_windows"):
+        notes.append(
+            f"{capture['num_windows']} orbital capture window(s), "
+            f"grapple delta-v {capture['grapple_delta_v_m_s']} m/s"
+        )
     lair = results.get("concealed_lair", {})
     if lair.get("top_fused_score"):
         notes.append(f"top lair candidate fused score {lair['top_fused_score']}")
+    discovery = results.get("hidden_base_discovery", {})
+    if discovery.get("true_rank"):
+        notes.append(
+            f"hidden base localized at rank {discovery['true_rank']} of "
+            f"{discovery['num_candidate_cells']} candidate sites"
+        )
+    infiltration = results.get("infiltration", {})
+    if infiltration.get("cost_reduction"):
+        notes.append(
+            f"infiltration route cuts cost by {infiltration['cost_reduction'] * 100:.1f}%"
+        )
     pattern = results.get("pattern_of_life", {})
     tempo = pattern.get("tempo")
     if tempo:
@@ -246,7 +256,12 @@ def register_gadgets(registry: GadgetRegistry) -> GadgetRegistry:
     gadgets: dict[str, Callable[..., Any]] = {
         "rendezvous_solver": find_rendezvous_windows,
         "intercept_budget": hohmann_transfer,
+        "capture_solver": capture_windows,
         "lair_detector": detect_concealed_lair,
+        "discovery_engine": expected_discovery_effort,
+        "search_ranker": rank_search_order,
+        "route_planner": plan_infiltration,
+        "emitter_locator": localize_tdoa,
         "pattern_analyzer": pattern_summary,
     }
     registry.register(self_film(), gadgets)

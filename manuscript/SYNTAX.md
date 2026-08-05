@@ -41,7 +41,10 @@ and cross-referenced in prose as `[@fig:rendezvous]` (parenthetical) or
 `@fig:rendezvous` (narrative). The VOLCANO figures:
 
 - `rendezvous_windows.png` → `{#fig:rendezvous}`
+- `orbital_capture.png` → `{#fig:capture}`
 - `concealed_lair_detection.png` → `{#fig:lair}`
+- `hidden_base_discovery.png` → `{#fig:discovery}`
+- `infiltration_route.png` → `{#fig:infiltration}`
 - `pattern_of_life.png` → `{#fig:pattern}`
 
 ## Citations
