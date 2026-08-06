@@ -17,6 +17,7 @@ from you_only_live_twice.emitter_localization import (
     build_sensor_posts,
     localization_error,
     localize_tdoa,
+    tdoa_error_sweep,
     tdoa_measurements,
     time_differences_to_ranges,
 )
@@ -125,3 +126,40 @@ def test_tdoa_noisy_measurements_bounded_error() -> None:
 
 def test_localization_error_simple() -> None:
     assert localization_error(np.array([1.0, 2.0]), (4.0, 6.0)) == pytest.approx(5.0)
+
+
+def test_localize_tdoa_raises_on_non_convergence() -> None:
+    """Exhausting ``max_iter`` must raise, never return a confident wrong fix.
+
+    This is the non-convergence safety property the docstring documents but no
+    test previously exercised: a single Gauss-Newton iteration from the origin
+    cannot reach the emitter, so the solver must fail loudly.
+    """
+    sensors = _sensors()
+    true = (5000.0, -3000.0)
+    deltas = tdoa_measurements(sensors, true)
+    with pytest.raises(ValueError, match="failed to converge"):
+        localize_tdoa(sensors, deltas, x0=np.array([0.0, 0.0]), max_iter=1, tol=1e-30)
+
+
+def test_tdoa_error_sweep_is_deterministic_and_monotone() -> None:
+    """The accuracy envelope is reproducible and rises with the jitter.
+
+    Averaging over fixed-seed realizations removes per-draw scatter, so the
+    mean error is non-decreasing in the timing jitter — the property the
+    manuscript's ``EMITTER_SWEEP_*`` tokens report.
+    """
+    sensors = _sensors()
+    true = (5000.0, -3000.0)
+    levels = (0.0, 1e-8, 2e-8, 5e-8, 1e-7)
+    a = tdoa_error_sweep(sensors, true, levels, np.array([0.0, 0.0]), realizations=24)
+    b = tdoa_error_sweep(sensors, true, levels, np.array([0.0, 0.0]), realizations=24)
+    assert a == b  # deterministic
+    assert [x["noise_s"] for x in a] == list(levels)
+    # Zero jitter -> the noiseless round-trip identity: convergence to within
+    # the solver tolerance (sub-micrometre), effectively machine zero.
+    assert a[0]["error_m"] < 1e-6
+    errors = [x["error_m"] for x in a]
+    assert errors == sorted(errors), errors
+    # The canonical operating point (1e-8 s) sits inside this envelope.
+    assert a[1]["error_m"] > 0.0

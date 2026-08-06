@@ -25,11 +25,15 @@ single fixed scenario. Its scope is deliberately bounded:
   ensemble of scenes; one scenario cannot supply it.
 * **Infiltration planning** is a static 4-connected A* over a fixed cost
   surface; it does not model dynamic guards or replanning.
-* **Emitter localization** solves TDOA with a single Gaussian timing-jitter
-  level ({{EMITTER_TIME_NOISE_NS}} ns, 1σ) at one emitter–sensor geometry;
-  heavy multipath, timing bias, and any characterization of error versus
-  geometry or noise level are out of scope. The reported
-  {{EMITTER_ERROR_M}} m is one operating point, not an accuracy envelope.
+* **Emitter localization** solves TDOA at one emitter–sensor geometry with a
+  Gaussian timing-jitter model. Error versus jitter is now characterisable: a
+  deterministic sweep of {{EMITTER_SWEEP_POINTS}} jitter levels (each averaged
+  over {{EMITTER_SWEEP_REALIZATIONS}} realizations) reports the mean-error
+  envelope, rising from zero to {{EMITTER_SWEEP_MAX_ERROR_M}} m at
+  {{SETUP_EMITTER_SWEEP_MAX_NS}} ns. Error versus *geometry* — multipath,
+  timing bias, and a swept sensor-ring geometry — remains out of scope; the
+  reported {{EMITTER_ERROR_M}} m is the operating point inside that envelope,
+  not a statement across geometries.
 * **Pattern of life** uses a diurnal-rate Poisson model of activity. It
   recovers the model's injected rhythm; it does not claim general time-series
   universality.

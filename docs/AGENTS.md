@@ -80,9 +80,11 @@ domain module → its test → scenario.solve_mission → mission/debrief eviden
   break. `test_scenario_discovery_truth_is_not_derived_from_the_cue_maps` fails
   if it comes back. Equally, do not hardcode a cell anywhere downstream.
 - **Footprint recovery, not centroid recovery.** The anomaly peak and the
-  posterior peak land on the carved *rim*, ~5.7 cells from the injected centre.
-  The supported claim is that they fall inside the injected footprint (80 of
-  4096 cells). Anything asserting centre-cell recovery is false here —
+  posterior peak land on the carved *rim*, at the cell offset reported by the
+  manuscript token `LAIR_DETECTOR_OFFSET_CELLS`. The supported claim is that
+  they fall inside the injected footprint (`LAIR_FOOTPRINT_CELLS` cells of the
+  `DISCOVERY_CANDIDATE_CELLS` candidate sites — both token-bound, never
+  hand-authored). Anything asserting centre-cell recovery is false here —
   `test_injected_centre_cell_is_not_recovered` pins it.
 - **Two different "effort" numbers.** `expected_discovery_effort` is the
   *realised* rank of a known true site; `posterior_expected_effort` is the

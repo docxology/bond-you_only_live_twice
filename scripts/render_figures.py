@@ -15,6 +15,8 @@ sys.path.insert(0, str(_ROOT / "src"))
 
 from you_only_live_twice.figures import (
     plot_concealed_lair,
+    plot_emitter_error_sweep,
+    plot_emitter_localization,
     plot_hidden_base_discovery,
     plot_infiltration_route,
     plot_orbital_capture,
@@ -31,6 +33,8 @@ def main() -> int:
         plot_hidden_base_discovery(),
         plot_infiltration_route(),
         plot_pattern_of_life(),
+        plot_emitter_localization(),
+        plot_emitter_error_sweep(),
     ]
     for path in paths:
         size = Path(path).stat().st_size

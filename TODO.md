@@ -285,10 +285,6 @@ claims were stronger and false, and were softened to these.
   `unittest.mock` are prohibited outright; deterministic stand-ins must implement
   the real protocol.
 
-## Verification
-
-The full gate, in order. Run every one and read the output before claiming done.
-
 ```bash
 cd /Users/4d/Documents/GitHub/template/projects/working/bond/you_only_live_twice
 
@@ -325,3 +321,99 @@ uv run python scripts/run_mission.py                       # full protocol run
 Live counts are recorded in `docs/_generated/COUNTS.md` and regenerated from the
 gate — never hardcode them in prose. If a number above moves, the gate moved:
 find out why before updating the file.
+
+
+---
+
+## Round-2 (2026-08-06)
+
+Round-2 improvement pass. **Baseline (measured before edits):**
+`uv run pytest tests/ --cov=src --cov-fail-under=90` → **107 passed, 0 failed,
+0 skipped, 97.97 % line+branch on `src/`**; `ruff check` + `ruff format
+--check` clean; `mypy` clean over 16 source files. **Final:** **123 passed, 0
+failed, 0 skipped, 100.00 % line+branch on `src/`**; `ruff check` + `format`
+clean (28 files); `mypy` clean; `scripts/00_preflight.py` → `preflight OK`; 101
+manuscript tokens; 8 figures rendered. The scenario descriptor gained two
+fields (the TDOA sweep levels / realizations), so `input_hash` changed — the
+manuscript's `{{MISSION_INPUT_HASH}}` follows automatically.
+
+### Correctness / test-gap closures (with the gate that now pins them)
+
+- **C1 — TDOA non-convergence now tested.** `localize_tdoa` exhausted its
+  iteration budget (`max_iter=1`, `tol=1e-30`) and asserted
+  `ValueError("TDOA Gauss-Newton failed to converge")`. The doc row in
+  `testing_philosophy.md` ("error paths … non-convergence") is now true.
+  → `test_localize_tdoa_raises_on_non_convergence`.
+- **C2 — two unreachable defensive statements removed.** `expected_discovery_effort`
+  now locates the true cell directly (`order.index(true_cell)+1`), deleting the
+  dead `return inf`; `scenario._footprint_rank`'s unreachable `ValueError`
+  became a documented `AssertionError` invariant, and is now *reachable and
+  pinned* by a negative control passing an out-of-grid footprint.
+  → `test_footprint_rank_raises_for_out_of_grid_footprint`.
+- **V3 — the documented `build_discovery_scene` default is exercised.** Calling
+  it without `true_cell` returns the volcano scene's lair centre.
+  → `test_build_discovery_scene_defaults_true_cell_to_the_lair_centre`.
+- **V1 — prior gate.** `test_terrain_weighted_prior_alone_ranks_the_footprint_first`
+  asserts the *prior alone* (no cues) ranks the injected footprint first and is
+  non-uniform. This is the gate that binds the terrain-weighted prior to the
+  find — the cue-dominated posterior alone is blind to a corrupted prior.
+- **V2 — footprint-mass negative control.**
+  `test_footprint_posterior_mass_can_fall_under_cue_misregistration` rolls all
+  three likelihood-ratio maps and shows the `1.0` footprint mass collapses
+  below `1e-10`, proving the reported concentration is measured, not an
+  artefact.
+- **V4 — every untested guard clause covered:** non-finite prior weights
+  (HBD 59), non-finite posterior scores (HBD 106), the `max_cells=None` default
+  (HBD 139→141), discovery shape mismatch (HBD 229), impassable shape mismatch
+  (infiltr 169), empty-ACF-search NaN (POL 171), empty-histogram duty cycle
+  (POL 211), the schedule attempt-cap termination (POL 105→113), the odd-kernel
+  size bump (terrain 80), and the `now=None` default date
+  (manuscript_variables 108).
+- **Dead LOS endpoint guard removed (adjacent to C2).** The
+  `if (r,c)==post or (r,c)==cell: continue` in `_line_occluded` is provably
+  unreachable — the integer-rounded sampler over `k∈[1, steps-1]` never lands
+  on either endpoint — so it was deleted with a comment, and
+  `infiltration_planning.py` reached 100 %. Likewise the dead `true_cell is
+  not None` guard in `plot_hidden_base_discovery` was removed.
+- **D1 — no hand-authored numbers left in `docs/`.** The three measured
+  constants (`~5.7 cells`, `80 of 4096`, `is 8.55`) are now pointers to the
+  manuscript tokens (`LAIR_DETECTOR_OFFSET_CELLS`, `LAIR_FOOTPRINT_CELLS` /
+  `DISCOVERY_CANDIDATE_CELLS`, `LAIR_TOP_FUSED_SCORE`), matching the token
+  discipline that already protects the manuscript.
+
+### Extension depth added this round
+
+- **E6 (partial) — TDOA accuracy envelope.** New `tdoa_error_sweep` in
+  `emitter_localization.py`: for each timing-jitter level it solves
+  `realizations=24` fixed-seed noisy TDOA problems and reports the mean error,
+  turning "one operating point" into a deterministic error-vs-jitter curve
+  (0→41.3 m over 0→200 ns). Wired through `scenario._solve_emitter` (additive
+  `sweep` key), descriptor, tokens (`EMITTER_SWEEP_*`) and prose, with the
+  monotonicity pinned by `test_tdoa_error_sweep_is_deterministic_and_monotone`.
+  Error-vs-*geometry* and a swept sensor-ring remain out of scope (E6's
+  remaining half).
+- **E8 — the missing figure is now drawn.** `plot_emitter_localization`
+  (TDOA sensor ring + range-difference hyperbolae + fix/truth/imagery markers)
+  and `plot_emitter_error_sweep` (the envelope) were added to `FIGURE_FILENAMES`,
+  the render script and both figure tests. Figure count goes 6 → 8, and
+  `03_results.md` / `05_experimental_setup.md` / `06_reproducibility.md` /
+  `07_scope_and_related_work.md` were updated to carry the new figures and
+  tokens.
+- Manuscript made more genuinely comprehensive: the emitter section now reports
+  the envelope (not just the operating point), the abstract and conclusion
+  mention it, and the scope section's emitter limitation was softened to "error
+  vs *geometry* out of scope" (the noise axis is now characterised).
+
+### Left for a future round
+
+- **E1** — the detection-performance ensemble (swept camouflage / noise / lair
+  geometry recovery-rate curve) remains open; the single-scene discovery
+  numbers are unchanged and still stated as one operating point.
+- **E7** — delegating `scenario_input_hash` to `bond-utilities.hash_payload`
+  (a path-dependency add) was intentionally deferred; the byte-identical local
+  sha256 remains in `scenario.py`.
+- **E2/E3/E4/E5** — J2 propagation, spline window edges, out-of-plane capture,
+  dynamic infiltration all remain future extensions.
+- The `attempts < 200_000` cap in `build_weekly_activity_schedule` is now
+  covered by a termination test but is still a hard safety bound (not a
+  modelling choice).

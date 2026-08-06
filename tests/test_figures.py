@@ -12,6 +12,8 @@ from pathlib import Path
 from you_only_live_twice.figures import (
     figures_dir,
     plot_concealed_lair,
+    plot_emitter_error_sweep,
+    plot_emitter_localization,
     plot_hidden_base_discovery,
     plot_infiltration_route,
     plot_orbital_capture,
@@ -26,6 +28,8 @@ _EXPECTED = {
     "hidden_base_discovery.png",
     "infiltration_route.png",
     "pattern_of_life.png",
+    "emitter_localization.png",
+    "emitter_error_sweep.png",
 }
 
 
@@ -41,6 +45,8 @@ def test_render_all_figures() -> None:
         plot_hidden_base_discovery(),
         plot_infiltration_route(),
         plot_pattern_of_life(),
+        plot_emitter_localization(),
+        plot_emitter_error_sweep(),
     ]
     names = {Path(p).name for p in paths}
     assert names == _EXPECTED

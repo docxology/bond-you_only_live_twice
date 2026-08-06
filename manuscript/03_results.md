@@ -115,7 +115,23 @@ transmitter to within {{EMITTER_ERROR_M}} m of the injected emitter in
 differences carrying a {{EMITTER_TIME_NOISE_NS}} ns (1σ) timing jitter, applied
 before the conversion to ranges, so this error is an achieved accuracy that can
 degrade — not the machine-zero a noise-free round trip through the same forward
-model returns by construction.
+model returns by construction. Figure [@fig:emitter] shows the sensor ring, the
+range-difference hyperbolae converging on the injected transmitter, and the
+converged fix, imagery candidate and injected truth marked separately.
+
+![Emitter localization: TDOA sensor ring with the range-difference hyperbolae (grey), the converged fix (+), the injected emitter (×) and the imagery-derived candidate (○).](../output/figures/emitter_localization.png){#fig:emitter}
+
+A single operating point is not an accuracy envelope, so the deterministic
+sweep of {{EMITTER_SWEEP_POINTS}} timing-jitter levels — each averaged over
+{{EMITTER_SWEEP_REALIZATIONS}} fixed-seed realizations at the same emitter and
+sensor ring — characterises how the mean error grows with the receiver jitter:
+sweeping σₜ over ({{EMITTER_SWEEP_LEVELS_NS}}) ns gives mean errors of
+({{EMITTER_SWEEP_ERRORS_M}}) m respectively. The mean error rises from zero
+(the noiseless round-trip identity) to {{EMITTER_SWEEP_MAX_ERROR_M}} m at
+{{SETUP_EMITTER_SWEEP_MAX_NS}} ns — a monotone envelope for this geometry,
+reported through Figure [@fig:emitter-envelope] rather than asserted.
+
+![Emitter accuracy envelope: mean localisation error vs receiver timing jitter σₜ.](../output/figures/emitter_error_sweep.png){#fig:emitter-envelope}
 
 The radio and imagery chains share no measurement, so comparing them is a
 genuine cross-modal check, and they do **not** agree on a cell: the TDOA fix

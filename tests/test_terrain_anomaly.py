@@ -214,3 +214,10 @@ def test_lair_region_area_and_contains() -> None:
     assert region.area_cells == 4 * 5
     assert region.contains(3, 4)
     assert not region.contains(0, 0)
+
+
+def test_gaussian_kernel_even_size_is_bumped_to_odd() -> None:
+    """An even requested kernel size must be bumped odd so the kernel is centered."""
+    kernel = gaussian_kernel(2.0, size=10)
+    assert kernel.shape[0] % 2 == 1
+    assert kernel.sum() == pytest.approx(1.0, rel=1e-9)

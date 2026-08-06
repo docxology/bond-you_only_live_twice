@@ -165,6 +165,10 @@ def generate_variables(
         "SETUP_EMITTER_TIME_NOISE_NS": _fmt(
             round(desc["emitter"]["time_noise_s"] * 1e9, 3)
         ),
+        "SETUP_EMITTER_SWEEP_MAX_NS": _fmt(
+            round(desc["emitter"]["sweep_noise_levels_s"][-1] * 1e9, 2)
+        ),
+        "SETUP_EMITTER_SWEEP_REALIZATIONS": _fmt(desc["emitter"]["sweep_realizations"]),
         # Rendezvous
         "RENDEZVOUS_NUM_WINDOWS": str(rv["num_windows"]),
         "RENDEZVOUS_FIRST_START_S": _fmt(rv["first_window_start_s"]),
@@ -221,6 +225,15 @@ def generate_variables(
         "EMITTER_TIME_NOISE_NS": _fmt(round(emit["time_noise_s"] * 1e9, 3)),
         "EMITTER_IMAGERY_OFFSET_M": _fmt(emit["imagery_site_offset_m"]),
         "EMITTER_TRUTH_IMAGERY_OFFSET_M": _fmt(emit["truth_to_imagery_offset_m"]),
+        "EMITTER_SWEEP_POINTS": str(len(emit["sweep"])),
+        "EMITTER_SWEEP_REALIZATIONS": _fmt(desc["emitter"]["sweep_realizations"]),
+        "EMITTER_SWEEP_MAX_ERROR_M": _fmt(round(emit["sweep"][-1]["error_m"], 1)),
+        "EMITTER_SWEEP_LEVELS_NS": ", ".join(
+            _fmt(round(x["noise_s"] * 1e9, 2)) for x in emit["sweep"]
+        ),
+        "EMITTER_SWEEP_ERRORS_M": ", ".join(
+            _fmt(round(x["error_m"], 1)) for x in emit["sweep"]
+        ),
         # Pattern of life
         "PATTERN_NUM_EVENTS": str(pat["num_events"]),
         "PATTERN_DOMINANT_PERIOD_H": _fmt(period_hours),

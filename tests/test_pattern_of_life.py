@@ -146,3 +146,23 @@ def test_pattern_summary() -> None:
     assert "duty_cycle" in summary
     assert set(summary["events_by_kind"]) == set(ACTIVITY_KINDS)
     assert sum(summary["events_by_kind"].values()) == len(events)
+
+
+def test_dominant_period_hours_empty_search_returns_nan() -> None:
+    """A search window with no valid lags (max < min) must yield NaN, not a bogus period."""
+    series = np.ones(100)
+    assert np.isnan(dominant_period_hours(series, min_hours=5.0, max_hours=3.0))
+
+
+def test_duty_cycle_empty_histogram_is_zero() -> None:
+    """A degenerate (zero-bin) histogram must map to a 0.0 duty cycle."""
+    assert duty_cycle((), num_days=0) == 0.0
+
+
+def test_build_schedule_terminates_via_attempt_guard() -> None:
+    """A pathological (very high) base rate must still terminate via the
+    attempt cap rather than looping forever toward the week's end."""
+    high = build_weekly_activity_schedule(base_rate_per_hour=3000.0, seed=1)
+    assert high  # it terminated and returned events
+    # The loop stopped on the attempt cap, before the observation week ended.
+    assert high[-1].timestamp_s < 7 * 86400.0

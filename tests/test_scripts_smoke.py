@@ -68,5 +68,7 @@ def test_render_figures_writes_pngs() -> None:
         "hidden_base_discovery.png",
         "infiltration_route.png",
         "pattern_of_life.png",
+        "emitter_localization.png",
+        "emitter_error_sweep.png",
     ):
         assert (_ROOT / "output" / "figures" / name).is_file()

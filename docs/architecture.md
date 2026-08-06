@@ -25,7 +25,7 @@ sees and the numbers the manuscript prints cannot disagree.
         ┌───────────────────────┼────────────────────────┐
         ▼                       ▼                        ▼
    mission.py              figures.py         manuscript_variables.py
- (BOND MissionProvider)  (6 deterministic PNGs)  ({{TOKEN}} hydration)
+ (BOND MissionProvider)  (8 deterministic PNGs)  ({{TOKEN}} hydration)
         │                       │                        │
         └────────── scripts/ (thin orchestrators only) ───┘
 ```
@@ -45,7 +45,7 @@ independently testable and importable without the protocol.
 | `terrain_anomaly.py` | Concealed-lair detection. `build_volcano_scene` (fixed-seed Gaussian cone, a flat lair shelf cut into the flank, thermal lapse rate plus a noise floor), `thermal_anomaly_mask` (one-tailed standardized residual against a Gaussian-smoothed background — we look for *excess* heat), `terrain_anomaly_mask` (magnitude residual, because a lair may be a raised shelf *or* a cut depression), weighted fusion, and `detect_concealed_lair` (connected-component labelling of the thresholded fused map, ranked by peak fused score). |
 | `hidden_base_discovery.py` | Bayesian search over candidate sites. `terrain_weighted_priors` (P(c) ∝ 1 + β·max(0, z_terrain)), `gaussian_likelihood_ratio` (LR(z) = exp(μz/σ²), so a neutral cell maps to 1), `fuse_posteriors` (normalized product of prior and cue LRs), `rank_search_order` (descending posterior, ties broken by row then column so the plan is byte-reproducible), `discovery_probability_curve` (cumulative find probability), `expected_discovery_effort` (the **realised** rank of a known true site) and `posterior_expected_effort` (the **posterior-weighted** E[K] = Σ k·P(c_k), which assumes no ground truth). `build_discovery_scene` assembles priors plus thermal / terrain / RF cues into the posterior. |
 | `infiltration_planning.py` | Route planning under detection risk. `slope_magnitude` (gradient hypotenuse), `thermal_exposure_field` (positive thermal-anomaly risk, normalized), `guard_exposure_field` (per-cell count of guard posts with an unoccluded sight line, via a digital-elevation line-of-sight test), `combined_cost_field` (1 + weighted slope / thermal / guard, with an impassable-lava mask at ∞), `astar_path` (4-connected A* with an admissible Manhattan heuristic and an insertion counter for deterministic tie-breaking), `greedy_baseline_path` (a greedy depth-first walk over the *same* search space that retraces out of dead ends, so it always reaches the goal and its cost really is an upper bound on A*'s), and `plan_infiltration` (the full route report including the cost reduction). |
-| `emitter_localization.py` | Passive RF geolocation. `build_sensor_posts` (equally spaced sensor ring), `tdoa_measurements` (exact range differences dᵢ = ‖e − sᵢ‖ − ‖e − s₀‖), `time_differences_to_ranges` (the one place the speed of light is used — converting receiver seconds to metres), `localize_tdoa` (Taylor-series / Gauss–Newton on the normal equations; raises on singular geometry or non-convergence rather than returning a silent bad fix), `localization_error`. |
+| `emitter_localization.py` | Passive RF geolocation. `build_sensor_posts` (equally spaced sensor ring), `tdoa_measurements` (exact range differences dᵢ = ‖e − sᵢ‖ − ‖e − s₀‖), `time_differences_to_ranges` (the one place the speed of light is used — converting receiver seconds to metres), `localize_tdoa` (Taylor-series / Gauss–Newton on the normal equations; raises on singular geometry or non-convergence rather than returning a silent bad fix), `localization_error`, and `tdoa_error_sweep` (a deterministic mean-error vs timing-jitter accuracy envelope over fixed-seed realizations). |
 | `pattern_of_life.py` | Base rhythm analysis. `build_weekly_activity_schedule` (inhomogeneous Poisson events by rejection sampling against a two-peak diurnal rate envelope), `hourly_histogram` (7×24), `daily_activity_profile` (mean over days), dominant-period detection by normalized autocorrelation, `peak_activity_windows` (contiguous hours above a percentile), tempo classification and duty cycle. `pattern_summary` returns the whole report. |
 
 ### Composition layer
@@ -77,8 +77,10 @@ object, so a reported parameter cannot drift from the simulated one.
 
 ### Derivation layer
 
-- `figures.py` — six deterministic PNGs under `output/figures/`, enumerated by
-  `FIGURE_FILENAMES` (the manuscript's figure count derives from that tuple).
+- `figures.py` — eight deterministic PNGs under `output/figures/`, enumerated by
+  `FIGURE_FILENAMES` (the manuscript's figure count derives from that tuple),
+  including the emitter sensor-ring/hyperbola plot and the emitter
+  error-vs-jitter envelope plot.
   Forces the Agg backend at import time.
 - `manuscript_variables.py` — hydrates the full `{{TOKEN}}` map from
   `manuscript/config.yaml` (identity only) plus `solve_mission` and

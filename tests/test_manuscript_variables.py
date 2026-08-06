@@ -76,3 +76,9 @@ def test_all_manuscript_tokens_are_generated() -> None:
                 missing.add(token)
     assert used > 0, "no tokens found in numbered manuscript sections"
     assert not missing, f"tokens used in prose but not generated: {sorted(missing)}"
+
+
+def test_generate_variables_default_now_is_fixed() -> None:
+    """With ``now=None`` the generation timestamp is the fixed local default."""
+    variables = generate_variables()  # now not supplied
+    assert variables["GENERATION_TIMESTAMP"] == "2026-08-04"

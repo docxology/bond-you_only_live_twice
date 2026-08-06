@@ -44,7 +44,7 @@ contain literal placeholders).
 
 The six figures live under `output/figures/` and are cross-referenced with
 `{#fig:label}` labels: `rendezvous`, `capture`, `lair`, `discovery`,
-`infiltration`, `pattern`. See `SYNTAX.md`.
+`infiltration`, `pattern`, `emitter`, `emitter-envelope`. See `SYNTAX.md`.
 
 ## Editing workflow
 

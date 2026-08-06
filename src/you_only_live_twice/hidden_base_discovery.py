@@ -179,11 +179,11 @@ def expected_discovery_effort(
         # A site the sensors assign no probability to is never searched first
         # in the greedy plan, so the expected effort is unbounded.
         return float("inf")
+    # rank_search_order enumerates every grid cell, so an in-grid ``true_cell``
+    # with positive posterior is guaranteed present; locate it directly rather
+    # than keeping a trailing fallback that no valid input can reach.
     order = rank_search_order(posterior)
-    for rank, cell in enumerate(order, start=1):
-        if cell == true_cell:
-            return float(rank)
-    return float("inf")
+    return float(order.index(true_cell) + 1)
 
 
 def _rf_power_map(

@@ -24,6 +24,7 @@ from you_only_live_twice.emitter_localization import (
     build_sensor_posts,
     localization_error,
     localize_tdoa,
+    tdoa_error_sweep,
     tdoa_measurements,
     time_differences_to_ranges,
 )
@@ -133,6 +134,11 @@ EMITTER_SENSOR_COUNT = 5
 #: is 0.0 by construction; with it, the error is a measurement that can come out
 #: worse.
 EMITTER_TIME_NOISE_S = 1.0e-8
+
+#: TDOA accuracy-envelope sweep: receiver timing-jitter levels (s, 1-sigma)
+#: and the number of fixed-seed realizations averaged per level.
+EMITTER_SWEEP_NOISE_LEVELS_S = (0.0, 1.0e-8, 2.0e-8, 5.0e-8, 1.0e-7, 2.0e-7)
+EMITTER_SWEEP_REALIZATIONS = 24
 
 
 def _orbits() -> dict[str, Any]:
@@ -312,7 +318,12 @@ def _footprint_rank(
     for rank, cell in enumerate(rank_search_order(posterior), start=1):
         if cell in footprint:
             return rank, cell
-    raise ValueError("the injected footprint is not in the search order")
+    # ``rank_search_order`` enumerates every grid cell and the scene generator
+    # guarantees the injected footprint is a non-empty subset of that grid, so
+    # a member of the footprint is always reached. This is a defensive
+    # invariant against callers that hand an out-of-grid footprint, not a
+    # hidden fallback — it is pinned by a negative-control test below.
+    raise AssertionError("the injected footprint is disjoint from the search grid")
 
 
 def _single_cue_footprint_ranks(
@@ -415,6 +426,14 @@ def _solve_emitter(emitter: dict[str, Any]) -> dict[str, Any]:
     )
     error = localization_error(estimate["estimate"], true)
     imagery = emitter["imagery_site_m"]
+    sweep = tdoa_error_sweep(
+        sensors,
+        true,
+        EMITTER_SWEEP_NOISE_LEVELS_S,
+        np.asarray(emitter["initial_guess"], dtype=float),
+        realizations=EMITTER_SWEEP_REALIZATIONS,
+        base_seed=SEED,
+    )
     return {
         "error_m": round(error, 4),
         "iterations": int(estimate["iterations"]),
@@ -428,6 +447,7 @@ def _solve_emitter(emitter: dict[str, Any]) -> dict[str, Any]:
             localization_error(estimate["estimate"], imagery), 1
         ),
         "truth_to_imagery_offset_m": round(math.dist(true, imagery), 1),
+        "sweep": sweep,
     }
 
 
@@ -573,6 +593,8 @@ def _scenario_descriptor() -> dict[str, Any]:
             "ring_radius_m": EMITTER_RING_RADIUS_M,
             "sensor_count": EMITTER_SENSOR_COUNT,
             "time_noise_s": EMITTER_TIME_NOISE_S,
+            "sweep_noise_levels_s": list(EMITTER_SWEEP_NOISE_LEVELS_S),
+            "sweep_realizations": EMITTER_SWEEP_REALIZATIONS,
         },
     }
 

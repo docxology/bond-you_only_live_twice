@@ -49,7 +49,7 @@ from you_only_live_twice.rendezvous_windows import (
     circular_state,
     range_and_elevation,
 )
-from you_only_live_twice.scenario import build_scenario
+from you_only_live_twice.scenario import SEED, build_scenario, solve_mission
 from you_only_live_twice.terrain_anomaly import (
     detect_concealed_lair,
 )
@@ -63,12 +63,16 @@ FIGURE_FILENAMES: tuple[str, ...] = (
     "hidden_base_discovery.png",
     "infiltration_route.png",
     "pattern_of_life.png",
+    "emitter_localization.png",
+    "emitter_error_sweep.png",
 )
 
 __all__ = [
     "FIGURE_FILENAMES",
     "figures_dir",
     "plot_concealed_lair",
+    "plot_emitter_error_sweep",
+    "plot_emitter_localization",
     "plot_hidden_base_discovery",
     "plot_infiltration_route",
     "plot_orbital_capture",
@@ -285,16 +289,17 @@ def plot_hidden_base_discovery() -> str:
         alpha=0.45,
         label="injected lair footprint",
     )
-    if true_cell is not None:
-        ax.plot(
-            true_cell[1],
-            true_cell[0],
-            marker="x",
-            color="cyan",
-            ms=12,
-            mew=2.5,
-            label="injected lair centre (truth)",
-        )
+    # The discovery scene always injects ``true_cell`` (the lair centre); a
+    # None-guard here would be an unreachable branch.
+    ax.plot(
+        true_cell[1],
+        true_cell[0],
+        marker="x",
+        color="cyan",
+        ms=12,
+        mew=2.5,
+        label="injected lair centre (truth)",
+    )
     ax.plot(
         peak[1],
         peak[0],
@@ -359,3 +364,113 @@ def plot_infiltration_route() -> str:
     ax.legend(loc="best", fontsize="small")
     fig.tight_layout()
     return _save(fig, "infiltration_route.png")
+
+
+def plot_emitter_localization() -> str:
+    """Plot the TDOA sensor ring, the range-difference hyperbolae, and the
+    true/fix/imagery locations for the emitter localisation capability.
+
+    The hyperbolae are the contours of ``|x - s_i| - |x - s_0| = measured_i``
+    drawn through each receiver baseline; they intersect at the injected
+    emitter. The TDOA fix (recomputed with the same fixed-seed noise the
+    mission uses), the injected emitter (ground truth) and the imagery-derived
+    candidate are marked separately, so the radio-vs-imagery disagreement the
+    manuscript reports is visible on the plot.
+    """
+    from you_only_live_twice.emitter_localization import (
+        SPEED_OF_LIGHT,
+        localize_tdoa,
+        tdoa_measurements,
+        time_differences_to_ranges,
+    )
+    from you_only_live_twice.scenario import EMITTER_RING_RADIUS_M
+
+    scenario = build_scenario()
+    em = scenario["emitter"]
+    sensors = em["sensor_posts"]
+    true = em["emitter_m"]
+    imagery = em["imagery_site_m"]
+
+    range_deltas = tdoa_measurements(sensors, true)
+    rng = np.random.default_rng(SEED)
+    time_deltas = range_deltas / SPEED_OF_LIGHT + rng.normal(
+        0.0, float(em["time_noise_s"]), range_deltas.shape
+    )
+    fix = localize_tdoa(
+        sensors,
+        time_differences_to_ranges(time_deltas),
+        x0=np.asarray(em["initial_guess"], dtype=float),
+    )["estimate"]
+
+    lim = EMITTER_RING_RADIUS_M / 1000.0
+    grid = np.linspace(-lim * 1.25, lim * 1.25, 400)
+    xx, yy = np.meshgrid(grid, grid)
+    s0 = sensors[0]
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    for i, sensor in enumerate(sensors[1:], start=1):
+        d0 = np.hypot(xx - s0[0] / 1000.0, yy - s0[1] / 1000.0)
+        di = np.hypot(xx - sensor[0] / 1000.0, yy - sensor[1] / 1000.0)
+        level = float(range_deltas[i - 1]) / 1000.0
+        ax.contour(
+            xx, yy, di - d0, levels=[level], colors="grey", linewidths=0.7, alpha=0.55
+        )
+
+    ax.scatter(
+        [p[0] / 1000.0 for p in sensors],
+        [p[1] / 1000.0 for p in sensors],
+        marker="^",
+        color="tab:orange",
+        s=90,
+        label="TDOA sensors",
+    )
+    ax.plot(
+        fix[0] / 1000.0,
+        fix[1] / 1000.0,
+        marker="+",
+        color="lime",
+        ms=16,
+        mew=2.6,
+        label="TDOA fix (estimate)",
+    )
+    ax.plot(
+        true[0] / 1000.0,
+        true[1] / 1000.0,
+        marker="x",
+        color="red",
+        ms=14,
+        mew=2.8,
+        label="injected emitter (truth)",
+    )
+    ax.plot(
+        imagery[0] / 1000.0,
+        imagery[1] / 1000.0,
+        marker="o",
+        color="cyan",
+        ms=10,
+        label="imagery candidate",
+    )
+    ax.set_title("TDOA emitter localisation — VOLCANO")
+    ax.set_xlabel("x (km)")
+    ax.set_ylabel("y (km)")
+    ax.legend(loc="best", fontsize="small")
+    ax.set_aspect("equal", adjustable="box")
+    fig.tight_layout()
+    return _save(fig, "emitter_localization.png")
+
+
+def plot_emitter_error_sweep() -> str:
+    """Plot the deterministic TDOA accuracy envelope: mean error vs jitter."""
+    scenario = build_scenario()
+    rows = solve_mission(scenario)["emitter_localization"]["sweep"]
+    noise_ns = [x["noise_s"] * 1e9 for x in rows]
+    errors_m = [x["error_m"] for x in rows]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(noise_ns, errors_m, marker="o", color="tab:purple", lw=2.0)
+    ax.set_xlabel("Receiver timing jitter $\\sigma_t$ (ns)")
+    ax.set_ylabel("Mean localisation error (m)")
+    ax.set_title("TDOA localisation-error envelope — VOLCANO")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    return _save(fig, "emitter_error_sweep.png")

@@ -22,7 +22,7 @@ found, routed into, and learned the rhythm of.
 | Concealed-lair detection | `terrain_anomaly.py` | Standardized-residual thermal (one-tailed) and terrain (magnitude) anomaly scoring against a smoothed background, fused and connected-component labelled |
 | Hidden-base discovery | `hidden_base_discovery.py` | Bayesian cue fusion (thermal / terrain / RF Gaussian likelihood ratios over a terrain-weighted prior), posterior map, deterministic search order, discovery curve, realised and posterior-expected search effort. Scored against the *injected* lair, never against the detector's own argmax |
 | Infiltration planning | `infiltration_planning.py` | Slope / thermal / guard-line-of-sight cost fields with a lava mask, deterministic 4-connected A* against a same-space greedy baseline that also reaches the goal (it backtracks), so the reported reduction is bounded by optimality |
-| Emitter localization | `emitter_localization.py` | TDOA hyperbolic multilateration by Taylor-series (Gauss–Newton) estimation over receiver timings carrying a fixed-seed jitter, plus the receiver-side seconds→metres conversion |
+| Emitter localization | `emitter_localization.py` | TDOA hyperbolic multilateration by Taylor-series (Gauss–Newton) estimation over receiver timings carrying a fixed-seed jitter, plus the receiver-side seconds→metres conversion and a deterministic mean-error vs jitter accuracy envelope |
 | Pattern of life | `pattern_of_life.py` | Inhomogeneous-Poisson activity, weekly / daily histograms, autocorrelation dominant period, peak operating windows, tempo, duty cycle |
 
 Four further modules bind the above into a package:
@@ -31,7 +31,7 @@ Four further modules bind the above into a package:
 | --- | --- |
 | `scenario.py` | The deterministic mission: `build_scenario()` assembles every input from named constants and fixed seeds, `solve_mission()` runs all seven capabilities, `scenario_descriptor()` / `scenario_input_hash()` provide provenance |
 | `mission.py` | The thin BOND-API `MissionProvider` adapter and the gadget registration |
-| `figures.py`, `manuscript_variables.py` | Derivation only: six deterministic PNGs, and the manuscript `{{TOKEN}}` map |
+| `figures.py`, `manuscript_variables.py` | Derivation only: eight deterministic PNGs, and the manuscript `{{TOKEN}}` map |
 
 ## MissionProvider surface
 

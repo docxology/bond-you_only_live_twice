@@ -280,3 +280,111 @@ def test_scenario_discovery_truth_is_not_derived_from_the_cue_maps() -> None:
         float(truth[0]) * 1000.0,
         float(truth[1]) * 1000.0,
     )
+
+
+def test_build_discovery_scene_defaults_true_cell_to_the_lair_centre() -> None:
+    """``build_discovery_scene``'s documented default: omit ``true_cell`` and it
+    falls back to the volcano scene's injected lair centre."""
+    from you_only_live_twice.terrain_anomaly import (
+        terrain_anomaly_mask,
+        thermal_anomaly_mask,
+    )
+
+    volcano = build_volcano_scene(seed=1967)
+    _t, thz = thermal_anomaly_mask(volcano["thermal"])
+    _d, tez = terrain_anomaly_mask(volcano["elevation"])
+    scene = build_discovery_scene(volcano, thz, tez, seed=1967)  # true_cell omitted
+    assert scene["true_cell"] == tuple(volcano["lair_center"])
+
+
+def test_build_discovery_scene_rejects_shape_mismatch() -> None:
+    volcano = build_volcano_scene(seed=1967)
+    with pytest.raises(ValueError):
+        build_discovery_scene(volcano, np.zeros((4, 4)), np.zeros((8, 8)), seed=1967)
+
+
+def test_terrain_weighted_priors_reject_non_finite_weights() -> None:
+    """A prior whose weights do not sum finite must raise, not silently NaN."""
+    with pytest.raises(ValueError):
+        terrain_weighted_priors(np.full((4, 4), np.inf), beta=1.0)
+
+
+def test_fuse_posteriors_reject_non_finite_scores() -> None:
+    """A cue map carrying non-finite mass must raise, not propagate the NaN."""
+    priors = np.full((4, 4), 1.0 / 16.0)
+    lr = np.ones((4, 4))
+    lr[0, 0] = np.inf
+    with pytest.raises(ValueError):
+        fuse_posteriors(priors, lr)
+
+
+def test_discovery_probability_curve_without_max_cells() -> None:
+    """The default (``max_cells is None``) branch returns the full curve."""
+    post = np.zeros((4, 4))
+    post[0, 0] = 0.7
+    post[1, 1] = 0.3
+    curve = discovery_probability_curve(post)
+    assert curve[-1] == pytest.approx(1.0, abs=1e-9)
+    assert np.all(np.diff(curve) >= 0.0)
+
+
+def test_terrain_weighted_prior_alone_ranks_the_footprint_first(_scene: dict) -> None:
+    """V1 gate: the terrain-weighted prior carries information on its own.
+
+    The prior (no likelihood-ratio cues) already locates the injected lair
+    footprint first. This is a prior-specific assertion: if the prior were
+    corrupted (e.g. made uniform, or misregistered away from the terrain
+    anomaly), this rank would collapse from 1 to ~the field average, so the
+    gate fails long before the cue-dominated posterior would. It binds the
+    terrain-weighted prior itself to the find.
+    """
+    priors = _scene["priors"] / float(_scene["priors"].sum())
+    footprint = _scene["volcano"]["lair_footprint"]
+    assert _footprint_rank(priors, footprint) == 1
+    # And it is not a silent uniform "prior": the scene must actually weight
+    # terrain anomalies, otherwise there is nothing to gate.
+    assert float(priors.max()) > 1.0 / float(priors.size)
+    # The prior's own argmax lies inside the injected footprint.
+    assert rank_search_order(priors)[0] in footprint
+
+
+def test_footprint_posterior_mass_can_fall_under_cue_misregistration(
+    _scene: dict,
+) -> None:
+    """V2 negative control: the reported 1.0 footprint mass is measured, not an artefact.
+
+    Misregistering every likelihood-ratio cue map relative to the carved
+    footprint must collapse the footprint's posterior mass. This is what proves
+    ``DISCOVERY_FOOTPRINT_POSTERIOR == 1.0`` is a real concentration that
+    depends on the cues actually pointing at the lair, rather than a value that
+    cannot move.
+    """
+    footprint = _scene["volcano"]["lair_footprint"]
+    post = _scene["posterior"]
+    nominal = sum(float(post[c]) for c in footprint)
+    assert nominal > 0.999  # the reported concentration
+
+    off = 10
+    degraded = fuse_posteriors(
+        _scene["priors"],
+        np.roll(_scene["lr_thermal"], off, axis=0),
+        np.roll(_scene["lr_terrain"], off, axis=0),
+        np.roll(_scene["lr_rf"], off, axis=0),
+    )
+    degraded_mass = sum(float(degraded[c]) for c in footprint)
+    assert degraded_mass < 1e-10
+
+
+def test_footprint_rank_raises_for_out_of_grid_footprint() -> None:
+    """The injected-footprint invariant trips on a footprint disjoint from the grid.
+
+    ``_footprint_rank`` enumerates the whole search grid; a footprint whose
+    cells are all outside the grid can never be reached, so the documented
+    invariant raises rather than returning a bogus rank.
+    """
+    from you_only_live_twice.scenario import _footprint_rank
+
+    scenario = build_scenario()
+    posterior = scenario["discovery"]["posterior"]
+    with pytest.raises(AssertionError):
+        _footprint_rank(posterior, frozenset({(999, 999)}))

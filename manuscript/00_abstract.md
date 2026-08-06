@@ -32,7 +32,8 @@ lair on a slope/thermal/guard-exposure cost surface, cutting route cost by
 {{INFILTRATION_REDUCTION_PCT}} % over a goal-reaching greedy baseline, and the
 **emitter locator** fixes the base's transmitter by TDOA multilateration to
 within {{EMITTER_ERROR_M}} m using {{EMITTER_SENSORS}} passive sensors whose
-timings carry a {{EMITTER_TIME_NOISE_NS}} ns jitter. Finally the
+timings carry a {{EMITTER_TIME_NOISE_NS}} ns jitter, backed by a deterministic
+{{EMITTER_SWEEP_POINTS}}-level error envelope vs jitter. Finally the
 **pattern-of-life analyzer** reads a week of base activity
 ({{PATTERN_NUM_EVENTS}} events), finding {{PATTERN_NUM_PEAK_WINDOWS}} daily
 operating window(s) ({{PATTERN_PEAK_WINDOWS}}) with a {{PATTERN_TEMPO}}

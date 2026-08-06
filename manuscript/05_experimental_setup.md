@@ -48,6 +48,7 @@ computed by `src/you_only_live_twice/manuscript_variables.py`.
 | Infiltration weights (slope / thermal / guard) | {{SETUP_INFIL_SLOPE_WEIGHT}} / {{SETUP_INFIL_THERMAL_WEIGHT}} / {{SETUP_INFIL_GUARD_WEIGHT}} |
 | TDOA sensor ring radius (m) / count | {{SETUP_EMITTER_RING_RADIUS_M}} / {{SETUP_EMITTER_SENSORS}} |
 | TDOA receiver timing jitter $\sigma_t$ (ns, 1σ) | {{SETUP_EMITTER_TIME_NOISE_NS}} |
+| TDOA error-envelope max jitter (ns) / realizations per level | {{SETUP_EMITTER_SWEEP_MAX_NS}} / {{SETUP_EMITTER_SWEEP_REALIZATIONS}} |
 | Injected lair footprint (cells) | {{LAIR_FOOTPRINT_CELLS}} |
 
 ## Rendering pipeline

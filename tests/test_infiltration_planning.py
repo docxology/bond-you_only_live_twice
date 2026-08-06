@@ -234,3 +234,13 @@ def test_canonical_scene_plans_a_route_with_reduction() -> None:
     assert AStarResult(
         path=plan["optimal_path"], cost=plan["optimal_cost"], expanded=plan["expanded"]
     )
+
+
+def test_combined_cost_field_rejects_impassable_shape_mismatch() -> None:
+    """An ``impassable`` mask with the wrong shape must raise, not silently mis-align."""
+    volcano = build_volcano_scene(seed=1967)
+    elevation = volcano["elevation"]
+    z = np.zeros_like(elevation)
+    bad = np.zeros((5, 5), dtype=bool)
+    with pytest.raises(ValueError):
+        combined_cost_field(elevation, z, (), impassable=bad)

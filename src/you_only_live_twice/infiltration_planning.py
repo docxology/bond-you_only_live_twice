@@ -107,12 +107,13 @@ def _line_occluded(
         return False
     post_h = float(elevation[r0, c0])
     cell_h = float(elevation[r1, c1])
+    # ``k`` runs over [1, steps-1] exclusive, so the integer-rounded sample
+    # ``(r, c)`` can never land exactly on the post (t=0) or the cell (t=1);
+    # no endpoint guard is needed and any such check would be dead code.
     for k in range(1, steps):
         t = k / steps
         r = round(r0 + t * (r1 - r0))
         c = round(c0 + t * (c1 - c0))
-        if (r, c) == post or (r, c) == cell:
-            continue
         line_h = post_h + t * (cell_h - post_h)
         if float(elevation[r, c]) > line_h + 1e-6:
             return True

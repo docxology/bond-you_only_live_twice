@@ -40,7 +40,7 @@ written around properties that a broken implementation would actually fail:
 | --- | --- | --- |
 | **Closed-form anchors** | `posterior_expected_effort` against a point mass (E[K]=1) and a uniform posterior (E[K]=(N+1)/2); a hand-computed asymmetric case | The estimator's algebra is wrong, not merely its plumbing |
 | **Round-trip inversion** | TDOA: place an emitter, generate exact range differences, convert seconds→metres, then solve — the Gauss–Newton fix must return the injected point to sub-millimetre accuracy. This proves solver/forward-model consistency **only**; it is an identity, not a measurement, and the mission's reported error comes from *noisy* timings instead | The forward model and the inverse solver disagree |
-| **Recovering an injected truth** | `test_pipeline_recovers_a_moved_injected_lair` carves the shelf at an offset chosen by the test, then requires the fused-anomaly peak *and* the Bayesian posterior peak to land inside **that** footprint (80 of 4096 cells). The truth is the scene-construction geometry, never a detector output | Detection has stopped tracking the injected lair, or a "truth" has been redefined as the estimate |
+| **Recovering an injected truth** | `test_pipeline_recovers_a_moved_injected_lair` carves the shelf at an offset chosen by the test, then requires the fused-anomaly peak *and* the Bayesian posterior peak to land inside **that** footprint — the `LAIR_FOOTPRINT_CELLS`-of-`DISCOVERY_CANDIDATE_CELLS`-cells target carried by the manuscript tokens, never a hand-copied constant.) The truth is the scene-construction geometry, never a detector output | Detection has stopped tracking the injected lair, or a "truth" has been redefined as the estimate |
 | **Guaranteed inequalities** | A* cost ≤ greedy-baseline cost, which needs *both* that the baseline searches the same 4-connected space **and** that it reaches the goal — A* minimises over goal-reaching walks only. `test_greedy_baseline_must_reach_the_goal_to_bound_astar` pins a grid where a non-backtracking greedy stops early and reports a cheaper truncated walk | The search is not optimal, the baseline is not in the same space, or the baseline is not comparing the same journey |
 | **Monotonicity / normalization** | Posteriors sum to 1; discovery curves are cumulative and non-decreasing; priors are strictly positive | Probability mass is being created or destroyed |
 | **Determinism** | Calling a generator twice returns an identical result; `rank_search_order` ties break by (row, col) | An unseeded draw or a set/dict ordering leak has crept in |
@@ -91,8 +91,9 @@ bite. The last two replace assertions that could not fail:
 
 - **The lair-recovery gate.** `test_detect_concealed_lair_recovers_injected_lair`
   used to assert `top.contains(centre) or top.fused_score > 3.0`. The fused
-  score is 8.55, so the second disjunct held unconditionally and a detector
-  pointing anywhere on the map would still have passed. It now asserts that the
+  score (token `LAIR_TOP_FUSED_SCORE`) made the second disjunct hold
+  unconditionally, so a detector pointing anywhere on the map would still have
+  passed. It now asserts that the
   fused-score argmax is a member of the injected footprint set — and
   `test_pipeline_recovers_a_moved_injected_lair` re-carves the lair somewhere
   else and requires the peak to follow, so a detector returning a fixed cell
@@ -113,6 +114,21 @@ bite. The last two replace assertions that could not fail:
   that the objective count is what the plan expects, and that gadgets register
   non-empty. It returns a non-zero exit code on any failure, and the smoke test
   asserts on that exit code.
+- **The terrain-weighted prior gate (V1).**
+  `test_terrain_weighted_prior_alone_ranks_the_footprint_first` asserts the
+  prior *with no likelihood-ratio cues at all* already ranks the injected
+  footprint first. This is the one gate a corrupted or misregistered prior
+  would break, because the cue-dominated posterior is so concentrated that
+  rolling the prior a few cells leaves its footprint rank at 1; the gate also
+  proves the prior is non-trivial (not a silent uniform) by asserting its
+  argmax lies inside the footprint.
+- **The footprint-mass negative control (V2).**
+  `DISCOVERY_FOOTPRINT_POSTERIOR` renders 1.0 only because every cue points at
+  the lair; no *single* cue misregistration moves it.
+  `test_footprint_posterior_mass_can_fall_under_cue_misregistration` rolls all
+  three likelihood-ratio maps and asserts the footprint mass collapses below
+  1e-10, proving the reported 1.0 is a measured concentration, not an artefact
+  that cannot move.
 
 ## Coverage
 

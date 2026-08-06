@@ -33,7 +33,11 @@ finds the base in this scene — each cue alone already ranks the footprint firs
 multi-cue evidence, not of weak-signal fusion. Third, the scene is synthetic
 and single: these numbers characterise one deterministic scenario, not a
 detection performance envelope, which would need a swept ensemble of scenes
-with varied camouflage, noise and lair geometry.
+with varied camouflage, noise and lair geometry. A partial exception is the
+emitter localiser, whose deterministic error-versus-jitter envelope
+({{EMITTER_SWEEP_POINTS}} levels, {{EMITTER_SWEEP_REALIZATIONS}} realizations
+each) is now reported alongside the operating point; the fixed emitter–sensor
+geometry and the single base scene remain single-scenario.
 
 Because every result flows from a fixed seed through token-injected prose, the
 manuscript and the computation can never drift apart: re-running the analysis

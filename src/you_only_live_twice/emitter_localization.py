@@ -41,6 +41,7 @@ __all__ = [
     "build_sensor_posts",
     "localization_error",
     "localize_tdoa",
+    "tdoa_error_sweep",
     "tdoa_measurements",
     "time_differences_to_ranges",
 ]
@@ -162,3 +163,47 @@ def localize_tdoa(
 def localization_error(estimate: np.ndarray, true: tuple[float, float]) -> float:
     """Euclidean distance between the estimate and the true emitter, metres."""
     return float(np.linalg.norm(np.asarray(estimate) - np.asarray(true)))
+
+
+def tdoa_error_sweep(
+    sensor_positions: tuple[tuple[float, float], ...],
+    emitter: tuple[float, float],
+    noise_levels_s: tuple[float, ...],
+    initial_guess: np.ndarray,
+    realizations: int = 24,
+    base_seed: int = 1967,
+) -> list[dict[str, float]]:
+    """Deterministic localisation-error envelope: mean error vs timing jitter.
+
+    For each single-sigma jitter level the receiver arrival-time differences
+    are perturbed by ``realizations`` fixed-seed Gaussian draws (each draw
+    re-seeded deterministically from ``base_seed``), the TDOA problem is
+    solved from the same initial guess, and the mean achieved localisation
+    error is reported. Averaging over independent realizations removes the
+    per-draw scatter, so the envelope rises smoothly with the timing jitter
+    and turns the single-operating-point ``localize_tdoa`` error into an
+    accuracy curve.
+
+    Returns a list of ``{"noise_s": sigma, "error_m": mean_error}`` in the
+    order of ``noise_levels_s``. Deterministic and infrastructure-free.
+    """
+    range_deltas = tdoa_measurements(sensor_positions, emitter)
+    rows: list[dict[str, float]] = []
+    for level_index, sigma in enumerate(noise_levels_s):
+        errors: list[float] = []
+        for realization in range(realizations):
+            rng = np.random.default_rng(
+                base_seed * 1000 + level_index * 1000 + realization
+            )
+            time_deltas = range_deltas / SPEED_OF_LIGHT + rng.normal(
+                0.0, sigma, range_deltas.shape
+            )
+            measured = time_differences_to_ranges(time_deltas)
+            estimate = localize_tdoa(
+                sensor_positions,
+                measured,
+                x0=np.asarray(initial_guess, dtype=float),
+            )
+            errors.append(localization_error(estimate["estimate"], emitter))
+        rows.append({"noise_s": float(sigma), "error_m": float(np.mean(errors))})
+    return rows

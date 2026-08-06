@@ -28,6 +28,8 @@ render script and this table follow.
 | Hidden-base posterior figure | `output/figures/hidden_base_discovery.png` | `scripts/render_figures.py` |
 | Infiltration-route figure | `output/figures/infiltration_route.png` | `scripts/render_figures.py` |
 | Pattern figure | `output/figures/pattern_of_life.png` | `scripts/render_figures.py` |
+| Emitter-localisation figure | `output/figures/emitter_localization.png` | `scripts/render_figures.py` |
+| Emitter error-envelope figure | `output/figures/emitter_error_sweep.png` | `scripts/render_figures.py` |
 
 `output/` is git-ignored; a fresh run regenerates a byte-identical tree.
 
