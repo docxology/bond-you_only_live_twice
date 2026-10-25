@@ -73,5 +73,6 @@ The manuscript is rendered entirely from the deterministic scenario:
 ## Test gate
 
 The suite runs `pytest` with `--cov=src --cov-fail-under=90` (line **and**
-branch). Live test counts and the achieved coverage percentage are tracked in
-`docs/_generated/COUNTS.md`, not hardcoded here.
+branch). Live test counts and the achieved coverage percentage come from the
+gate run itself (recorded locally under the gitignored `docs/_generated/`), not
+hardcoded here.

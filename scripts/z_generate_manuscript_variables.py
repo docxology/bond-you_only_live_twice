@@ -2,9 +2,9 @@
 
 Writes ``output/data/manuscript_variables.json`` (a deterministic ``{token:
 value}`` mapping computed by :func:`you_only_live_twice.manuscript_variables.
-generate_variables`). Unlike the exemplar this tree is local-only, so the
-writer resolves every token from the deterministic scenario — there is no
-``--allow-draft`` fallback because no token can be unresolved by construction.
+generate_variables`). The writer resolves every token from the deterministic
+scenario — there is no ``--allow-draft`` fallback because no token can be
+unresolved by construction.
 """
 
 from __future__ import annotations

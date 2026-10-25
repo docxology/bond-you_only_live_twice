@@ -70,17 +70,18 @@ scripts/
 manuscript/  docs/  tests/
 ```
 
-The domain core is infrastructure-free and importable without BOND-API; only
-`mission.py` (and `figures.py` / `manuscript_variables.py`) depend on the
-frozen protocol. All computation flows through a single analysis source
-(`scenario.solve_mission`) shared by the adapter and the manuscript tokens, so
-the outcome the coordinator sees and the numbers the manuscript prints cannot
-disagree.
+The domain core is infrastructure-free and importable without BOND-API: only
+`mission.py` (the adapter) and `manuscript_variables.py` (protocol identity)
+import the frozen protocol. All computation flows through a single analysis
+source (`scenario.solve_mission`) shared by the adapter and the manuscript
+tokens, so the outcome the coordinator sees and the numbers the manuscript
+prints cannot disagree.
 
 ## Quick start
 
 ```bash
-cd projects/working/bond/you_only_live_twice
+# Standalone repo: bond-api is resolved as the sibling ../bond-api
+# (git clone https://github.com/docxology/bond-api ../bond-api)
 uv sync --extra dev
 
 # Run the whole mission through the protocol:
@@ -101,12 +102,13 @@ uv run mypy src/ scripts/
 ```
 
 The enforced floor is **90 % line and branch coverage** on `src/`, with zero
-failures and zero skips. Measured counts are recorded in
-`docs/_generated/COUNTS.md` rather than quoted in prose, so no figure here can
-go stale.
+failures and zero skips. Measured counts come from the gate output, recorded
+locally under the gitignored `docs/_generated/` rather than quoted in prose, so
+no figure here can go stale.
 
 Deterministic: fixed seed 1967, no wall-clock in persisted artifacts, real
-computation only (no mocks). Local-only tree — never pushed.
+computation only (no mocks). Published at
+`github.com/docxology/bond-you_only_live_twice`.
 
 ## Documentation
 

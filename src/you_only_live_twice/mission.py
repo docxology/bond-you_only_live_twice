@@ -6,8 +6,9 @@ level under the name the discovery contract expects, and it registers the
 film's analytical *gadgets* with the :class:`bond_api.registry.GadgetRegistry`.
 
 The domain modules stay infrastructure-free and importable without BOND-API;
-only this module (and the derivations in :mod:`you_only_live_twice.figures`)
-depend on the protocol. All actual computation lives in
+only this module (and the protocol-identity lookup in
+:mod:`you_only_live_twice.manuscript_variables`) imports the protocol. All
+actual computation lives in
 :func:`you_only_live_twice.scenario.solve_mission`, the single source shared by
 this adapter and the manuscript token generator.
 """

@@ -6,9 +6,10 @@ touching a file. `docs/AGENTS.md` covers the *procedure*; this file is the
 
 ## Scope and safety
 
-- Work **only** inside `projects/working/bond/you_only_live_twice/`. Do not
-  touch sibling BOND packages, bond root files, or the template repo.
-- This is a **local-only** working tree. There is no remote; never push.
+- Work **only** inside this repository. Do not touch a sibling BOND package
+  (only `../bond-api` is a dependency here), or the template repo.
+- This repo is published at `github.com/docxology/bond-you_only_live_twice`;
+  commit and push on `main`.
 - Commit path-scoped with `git add -A` **inside this repo only**.
 
 ## Layering

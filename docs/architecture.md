@@ -115,8 +115,9 @@ Enforced by review and by the layering above, not by an import hook:
 
 - The pure core must never import `bond_api`, `infrastructure`, matplotlib, or
   anything under `scripts/`.
-- Only `mission.py`, `figures.py` and `manuscript_variables.py` may touch
-  `bond_api` (the latter two only for `protocol_surface`).
+- Only `mission.py` and `manuscript_variables.py` may touch `bond_api` (the
+  latter only for `protocol_surface`). `figures.py` needs matplotlib and numpy
+  but no protocol.
 - `scripts/` are thin orchestrators: argv shaping, I/O, printing paths. If a
   script starts computing, the computation belongs in `src/`.
 - Per the BOND layer topology this package may depend on `bond-api` and

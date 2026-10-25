@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -51,7 +51,7 @@ wheels = [
 [[package]]
 name = "bond-api"
 version = "0.1.0"
-source = { directory = "/Users/4d/Documents/GitHub/template/projects/working/bond/bond-api" }
+source = { directory = "../bond-api" }
 dependencies = [
     { name = "pyyaml" },
 ]
@@ -1304,14 +1304,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bond-api", directory = "/Users/4d/Documents/GitHub/template/projects/working/bond/bond-api" },
-    { name = "matplotlib", specifier = ">=3.7.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "numpy", specifier = ">=1.24.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "bond-api", directory = "../bond-api" },
+    { name = "matplotlib", specifier = ">=3.10.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.0" },
+    { name = "numpy", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
-    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.0" },
+    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12" },
 ]
 provides-extras = ["dev"]

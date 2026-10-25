@@ -21,7 +21,7 @@ exposed through the frozen BOND-API `MissionProvider` protocol.
 | `agent_instructions.md` | The hard operational constraints — scope, layering, determinism, manuscript token rules, lineage | Before making any change |
 | `architecture.md` | Module-by-module description of `src/`, how the pieces compose through `scenario.py`, and how `mission.py` implements the frozen `MissionProvider` | When you need to know what a module actually computes |
 | `testing_philosophy.md` | The no-mock / real-data / determinism doctrine as it applies to these seven capabilities, and what each kind of test proves | Before writing or judging a test |
-| `_generated/COUNTS.md` | Live test and coverage counts from the enforced gate | When you need a measured number — never hardcode one in prose |
+| `_generated/` (gitignored) | Local scratch for measured test/coverage counts from a gate run | When you need a measured number — never hardcode one in prose |
 
 ## Documentation that lives outside this directory
 
@@ -34,7 +34,8 @@ exposed through the frozen BOND-API `MissionProvider` protocol.
 
 ## Ground rules in one paragraph
 
-Scope is exactly this directory; the tree is local-only and is never pushed.
+Scope is exactly this directory; the tree is published at
+`github.com/docxology/bond-you_only_live_twice`.
 No mock framework anywhere — real data and real computation, fixed seed 1967.
 Business logic lives in `src/`, `scripts/` are thin orchestrators. Every number
 in the manuscript arrives as a `{{TOKEN}}` from

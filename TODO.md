@@ -4,11 +4,10 @@
 computation core of seven analytical capabilities (rendezvous windows, orbital
 capture, concealed-lair detection, hidden-base discovery, infiltration planning,
 TDOA emitter localization, pattern of life) behind the frozen BOND-API
-`MissionProvider` protocol. **Verified state, measured 2026-08-05 at commit
-`dd88b56`:** `uv run pytest tests/ --cov=src --cov-fail-under=90` →
-**107 passed, 0 failed, 0 skipped, 97.97 % line+branch coverage on `src/`**;
-`ruff check` + `ruff format --check` clean over `src/ scripts/ tests/`; `mypy`
-clean over 16 source files; `scripts/00_preflight.py` exits 0. The adversarial
+`MissionProvider` protocol. **Latest measured gate:** see the Round-2 section
+below (123 passed, 0 failed, 0 skipped, 100.00 % line+branch coverage on
+`src/`; `ruff` + `mypy` clean; `scripts/00_preflight.py` exits 0). Counts are
+not restated here — re-run the gate. The adversarial
 audit's eight findings (four SEVERE, four MODERATE) were all closed in `dd88b56`
 — the anti-circularity gate, the moved-lair positive control, the goal-reaching
 greedy baseline and the noisy-TDOA error are live and were spot-checked this
@@ -18,6 +17,11 @@ Items that are done do not live here. Built capabilities are described in
 `README.md` and `docs/architecture.md`.
 
 ## Open work
+
+**Status:** C1, C2, V1–V4 and E8 were closed in Round-2 (section below), and
+E6's noise axis is closed while its geometry axis stays open; E1, E2–E5 remain
+open and E7 was deferred. The entries below are kept as written for the record —
+read the Round-2 section before starting one.
 
 Fifteen items. Three (V1, V2, E1) come directly from the audit's unresolved
 findings and are the highest-value entries in this file.
@@ -211,8 +215,7 @@ the relationship asserted rather than eyeballed.
 `scenario.scenario_input_hash` (`src/you_only_live_twice/scenario.py:590-595`)
 duplicates, byte for byte, `bond_utilities.mission_io.hash_payload`
 (canonical JSON with `sort_keys` + compact separators, then SHA-256). The sibling
-package exists at
-`/Users/4d/Documents/GitHub/template/projects/working/bond/bond-utilities` but is
+package exists at `../bond-utilities` but is
 not a dependency here — only `bond-api` is (`pyproject.toml:21,30`). *(The
 previous TODO named `mission_io.record_provenance_outcome`; no such function
 exists — the real surface is `hash_payload`, `validate_record`, `save_record`.)*
@@ -280,13 +283,14 @@ claims were stronger and false, and were softened to these.
 - **No dependency on a sibling film package, the coordinator, or the
   orchestrator.** The BOND layer topology forbids it; E7's `bond-utilities` is a
   shared-utility layer, not a peer.
-- **Local-only tree.** No remote; commit here, never push.
+- **Published package repo.** `origin` is
+  `github.com/docxology/bond-you_only_live_twice`; commits go to `main`.
 - **No mocks, no untracked randomness.** `MagicMock` / `mocker.patch` /
   `unittest.mock` are prohibited outright; deterministic stand-ins must implement
   the real protocol.
 
 ```bash
-cd /Users/4d/Documents/GitHub/template/projects/working/bond/you_only_live_twice
+# from the repo root
 
 uv run pytest tests/ --cov=src --cov-fail-under=90
 #   → 107 passed, 0 failed, 0 skipped; TOTAL 97.97 % (line+branch); floor 90 %
@@ -318,9 +322,9 @@ uv run python scripts/render_figures.py                    # 6 PNGs → output/f
 uv run python scripts/run_mission.py                       # full protocol run
 ```
 
-Live counts are recorded in `docs/_generated/COUNTS.md` and regenerated from the
-gate — never hardcode them in prose. If a number above moves, the gate moved:
-find out why before updating the file.
+Live counts are recorded under the gitignored `docs/_generated/` and regenerated
+from the gate — never hardcode them in prose. If a number above moves, the gate
+moved: find out why before updating the file.
 
 
 ---

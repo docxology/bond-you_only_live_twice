@@ -105,7 +105,7 @@ def generate_variables(
     pat = m["pattern"]
 
     if now is None:
-        now = "2026-08-04"  # fixed manuscript generation date (local-only)
+        now = "2026-08-04"  # fixed manuscript generation date (never wall-clock)
 
     peak_windows_str = "; ".join(f"{a:02d}-{b:02d}h" for a, b in pat["peak_windows"])
     period = pat["dominant_period_hours"]

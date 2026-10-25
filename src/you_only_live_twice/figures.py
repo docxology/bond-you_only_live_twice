@@ -1,8 +1,8 @@
 """Deterministic figures for the VOLCANO mission report.
 
 Renders publication-quality PNGs under ``output/figures/`` — one per reported
-capability (the pure-solver capabilities that produce a scalar table rather
-than a field, notably emitter localisation, are reported numerically):
+capability (the purely scalar capabilities, such as the rendezvous delta-v
+budget and the discovery rank, are reported numerically):
 
 * rendezvous windows — target elevation and slant range vs time, with the
   detected windows shaded;
@@ -16,7 +16,12 @@ than a field, notably emitter localisation, are reported numerically):
 * infiltration route — the movement-cost field with the A* route, entry, lair
   and guard posts overlaid;
 * pattern of life — the daily activity profile with the peak windows and the
-  base operating rhythm.
+  base operating rhythm;
+* emitter localisation — the TDOA sensor ring with the range-difference
+  hyperbolae, the converged fix, the injected emitter and the imagery-derived
+  candidate;
+* emitter accuracy envelope — mean localisation error vs receiver timing
+  jitter over the deterministic sweep.
 
 :data:`FIGURE_FILENAMES` is the authoritative list of produced files; the
 manuscript's figure count is derived from it rather than hand-authored.

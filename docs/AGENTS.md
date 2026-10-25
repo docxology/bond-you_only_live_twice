@@ -23,9 +23,10 @@ this file is the *working procedure*.
 
 ## Scope
 
-Work only inside `projects/working/bond/you_only_live_twice/`. Do not touch a
-sibling BOND package, the bond root files, or the template repo. This is a
-local-only tree with no remote: commit here, never push.
+Work only inside this repository. The only sibling BOND package this repo
+depends on is `../bond-api` (a path dependency); do not edit it, or any other
+sibling package, from here. Published at
+`github.com/docxology/bond-you_only_live_twice`: commit and push on `main`.
 
 ## What is frozen and what is open
 
@@ -64,8 +65,8 @@ domain module → its test → scenario.solve_mission → mission/debrief eviden
    manuscript's figure count and the render script both read that tuple.
 6. **Docs**: update `docs/architecture.md`'s module table and the root
    `README.md` capability table in the same commit as the code.
-7. **Run the gate**, then refresh `docs/_generated/COUNTS.md` from the real
-   output.
+7. **Run the gate**, then record the real output under the gitignored
+   `docs/_generated/` (never hand-copy a measured number into prose).
 
 ## Traps specific to this package
 

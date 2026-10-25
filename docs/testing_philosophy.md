@@ -141,7 +141,8 @@ uv run pytest tests/ --cov=src --cov-fail-under=90
 Branch coverage matters more than line coverage here because most of the risk
 lives in conditionals: window open/close transitions, the impassable mask, the
 `inf` return when phasing geometry never closes, the "no path exists" raise.
-Live measured numbers are recorded in `docs/_generated/COUNTS.md` and are never
+Live measured numbers come from the gate run (recorded locally under the
+gitignored `docs/_generated/`) and are never
 hardcoded into prose — if you need to cite the figure, cite the gate.
 
 Coverage is a floor, not a goal. A module at 100 % with only shape assertions

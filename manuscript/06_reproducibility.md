@@ -41,6 +41,7 @@ The enforced quality gate is:
 uv run pytest tests/ --cov=src --cov-fail-under=90
 ```
 
-with ruff (check + format) and mypy green on `src/` and `scripts/`. Live
-counts live in `docs/_generated/COUNTS.md`. The suite uses real computation and
+with ruff (check + format) and mypy green on `src/` and `scripts/`. Live counts
+come from the gate run (recorded locally under the gitignored
+`docs/_generated/`). The suite uses real computation and
 no mock framework, so a green gate means the algorithms were actually exercised.

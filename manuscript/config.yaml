@@ -1,5 +1,6 @@
 # you_only_live_twice — VOLCANO manuscript configuration
-# Local-only BOND film package. This file drives manuscript {{TOKEN}} hydration
+# BOND film package (github.com/docxology/bond-you_only_live_twice). This file
+# drives manuscript {{TOKEN}} hydration
 # via src/you_only_live_twice/manuscript_variables.py::generate_variables().
 # Numeric claims in prose are tokens, never hand-authored values.
 
@@ -17,11 +18,11 @@ authors:
     corresponding: true
 
 publication:
-  # Local-only working tree: no remote, no fabricated DOI records. Keep the
-  # block minimal so manuscript tooling that reads it does not break.
+  # No DOI is minted for this package, so no fabricated DOI record appears here.
+  # Keep the block minimal so manuscript tooling that reads it does not break.
   journal: "PROJECT BOND — Film Package Series"
   year: "2026"
-  medium: "local-only working tree (never pushed)"
+  medium: "software repository (github.com/docxology/bond-you_only_live_twice)"
 
 keywords:
   - "orbital mechanics"

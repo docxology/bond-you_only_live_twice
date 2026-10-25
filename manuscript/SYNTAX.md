@@ -41,6 +41,8 @@ and cross-referenced in prose as `[@fig:rendezvous]` (parenthetical) or
 - `concealed_lair_detection.png` → `{#fig:lair}`
 - `hidden_base_discovery.png` → `{#fig:discovery}`
 - `infiltration_route.png` → `{#fig:infiltration}`
+- `emitter_localization.png` → `{#fig:emitter}`
+- `emitter_error_sweep.png` → `{#fig:emitter-envelope}`
 - `pattern_of_life.png` → `{#fig:pattern}`
 
 ## Citations

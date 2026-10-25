@@ -1,8 +1,8 @@
 # AGENTS.md — you_only_live_twice (VOLCANO)
 
 Project rules for agents working in this package. **Scope = exactly this
-directory.** Local-only tree; never push; path-scoped commits (`git add -A` in
-this repo only).
+directory.** Published at `github.com/docxology/bond-you_only_live_twice`;
+commit on `main`, path-scoped (`git add -A` in this repo only).
 
 Deeper guidance lives under `docs/`: `docs/AGENTS.md` (working procedure and
 package-specific traps), `docs/agent_instructions.md` (the hard rules),
@@ -15,9 +15,9 @@ mapping), `docs/testing_philosophy.md` (what a test here must prove).
 | --- | --- |
 | `rendezvous_windows.py`, `orbital_capture.py`, `terrain_anomaly.py`, `hidden_base_discovery.py`, `infiltration_planning.py`, `emitter_localization.py`, `pattern_of_life.py`, `scenario.py` | Pure domain core — stdlib + numpy only, importable **without** BOND-API |
 | `mission.py` | Thin BOND-API `MissionProvider` adapter + gadget registration |
-| `figures.py`, `manuscript_variables.py` | Derivation layer (protocol-aware but no domain logic) |
+| `figures.py`, `manuscript_variables.py` | Derivation layer (no domain logic; only `manuscript_variables.py` reads protocol identity) |
 | `scripts/` | Thin orchestrators only |
-| Live counts | `docs/_generated/COUNTS.md`; never hardcode measured totals/coverage in prose |
+| Live counts | Measured by the gate run; recorded locally under the gitignored `docs/_generated/`; never hardcode measured totals/coverage in prose |
 
 ## Capability summary
 

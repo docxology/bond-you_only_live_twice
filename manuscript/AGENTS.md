@@ -4,7 +4,7 @@ type: "manuscript_guide"
 version: "0.1.0"
 ---
 
-# Manuscript (projects/working/bond/you_only_live_twice/manuscript)
+# Manuscript (manuscript/)
 
 Agent rules for the VOLCANO manuscript: file roles, the `{{TOKEN}}` protocol,
 and the figure protocol.
@@ -16,7 +16,7 @@ and the figure protocol.
 | `00_abstract.md` | Abstract; result summary | all headline result tokens |
 | `01_introduction.md` | Mission setup, reader's guide | none |
 | `02_methodology.md` | Mathematics of the seven capabilities | none (citations only) |
-| `03_results.md` | All results + all figures | result tokens; figure refs `rendezvous`, `capture`, `lair`, `discovery`, `infiltration`, `pattern` |
+| `03_results.md` | All results + all figures | result tokens; figure refs `rendezvous`, `capture`, `lair`, `discovery`, `infiltration`, `emitter`, `emitter-envelope`, `pattern` |
 | `04_conclusion.md` | Summary | identity tokens |
 | `05_experimental_setup.md` | Scenario params, environment | `{{SETUP_*}}` tokens (derived from `scenario_descriptor()`), `{{NUM_FIGURES}}`, env tokens |
 | `06_reproducibility.md` | Determinism, artifacts, test gate | provenance tokens |
@@ -42,9 +42,9 @@ contain literal placeholders).
 
 ## Figure protocol
 
-The six figures live under `output/figures/` and are cross-referenced with
+The eight figures live under `output/figures/` and are cross-referenced with
 `{#fig:label}` labels: `rendezvous`, `capture`, `lair`, `discovery`,
-`infiltration`, `pattern`, `emitter`, `emitter-envelope`. See `SYNTAX.md`.
+`infiltration`, `emitter`, `emitter-envelope`, `pattern`. See `SYNTAX.md`.
 
 ## Editing workflow
 
