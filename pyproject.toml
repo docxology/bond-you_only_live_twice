@@ -17,7 +17,7 @@ description = "VOLCANO — special-agent mission software: orbital rendezvous wi
 authors = [
     {name = "Daniel Ari Friedman", email = "daniel@activeinference.institute"}
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "bond-api",
     "numpy>=2.0.0",
