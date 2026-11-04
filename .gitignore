@@ -14,3 +14,6 @@ __pycache__/
 # Regenerable artifacts (script smoke tests + figure runs leave the tree clean if ignored).
 output/
 docs/_generated/
+
+# Build output the vendored copies' own builds write into vendor/.
+vendor/**/build/

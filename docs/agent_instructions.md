@@ -7,7 +7,8 @@ touching a file. `docs/AGENTS.md` covers the *procedure*; this file is the
 ## Scope and safety
 
 - Work **only** inside this repository. Do not touch a sibling BOND package
-  (only `../bond-api` is a dependency here), or the template repo.
+  (the only protocol dependency here is the recorded copy in `vendor/bond-api`),
+  or the template repo.
 - This repo is published at `github.com/docxology/bond-you_only_live_twice`;
   commit and push on `main`.
 - Commit path-scoped with `git add -A` **inside this repo only**.

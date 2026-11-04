@@ -80,8 +80,8 @@ prints cannot disagree.
 ## Quick start
 
 ```bash
-# Standalone repo: bond-api is resolved as the sibling ../bond-api
-# (git clone https://github.com/docxology/bond-api ../bond-api)
+# Standalone repo: bond-api is the recorded copy under vendor/bond-api, whose
+# bytes are bound by scripts/vendor.py -- no sibling checkout is required.
 uv sync --extra dev
 
 # Run the whole mission through the protocol:

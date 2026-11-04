@@ -73,7 +73,7 @@ pattern analyzer) with the `GadgetRegistry`.
 
 ```bash
 uv run pytest tests/ --cov=src --cov-fail-under=90
-uv run ruff check src/ scripts/ tests/ && uv run ruff format src/ scripts/ tests/
+uv run ruff check src/ scripts/ tests/ && uv run ruff format --check src/ scripts/ tests/
 uv run mypy src/ scripts/
 rg -n "template[_]code_project" . || echo CLEAN   # lineage must be zero
 git status --short                                 # clean after commit

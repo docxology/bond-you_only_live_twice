@@ -17,4 +17,5 @@
   git-ignored `docs/_generated/`; do not hardcode them into prose.
 - **Scope is this repository.** Never write into sibling BOND packages, the suite root, or the
   template repository.
-- `run_mission.py` and `00_preflight.py` need the sibling `bond-api`; the pure core does not.
+- `run_mission.py` and `00_preflight.py` need the recorded `bond-api` copy under `vendor/`; the pure
+  core does not.

@@ -1,0 +1,32 @@
+{
+  "package": "bond-api",
+  "module_path": "src/bond_api",
+  "source_repository": "docxology/bond-api",
+  "sha": "c0362ff0c9d76f80578478b8309d0deba79835fe",
+  "copied_paths": [
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+    "src/bond_api/__init__.py",
+    "src/bond_api/capabilities.py",
+    "src/bond_api/discovery.py",
+    "src/bond_api/manuscript_variables.py",
+    "src/bond_api/protocol.py",
+    "src/bond_api/registry.py",
+    "src/bond_api/serialization.py"
+  ],
+  "sha256": {
+    "LICENSE": "72f87c6cb562ffc6f870dc124d86b45ee0df5460e83fe8443d8e2ae65777e978",
+    "README.md": "9d1ced7bec9317ce8acf4cb480ecad26f9d887d93c5a80fa38da9d641a55cc57",
+    "pyproject.toml": "286bafda78311e13cea74f66864a2c1582683f68fbaf9ba5c3358283d54e4334",
+    "src/bond_api/__init__.py": "53af4a778c2634d63ef7533ba5e1ea10dd8a65af25ca2f03b35a12b2165531a1",
+    "src/bond_api/capabilities.py": "f55946c243fcb1495edc1cf24258df0099b345ddfd02cdf6ecd3f2bf5f8fefc8",
+    "src/bond_api/discovery.py": "f40ba872ecda52105d4ab1909f1d5004170aa186a966ebd2c2d199cfbd275ad0",
+    "src/bond_api/manuscript_variables.py": "587eef74ad162d98880f40aee45e98a891c286b3b5ae066bceefa48f4072265d",
+    "src/bond_api/protocol.py": "2f6bb15e29ce5fdd4396d15e6b41686f9fd35933cd28e3bc67328dbd087b3740",
+    "src/bond_api/registry.py": "5184f9043420094c797ccb03782b83066703ebb190b64b86f8bdd91f42628bb7",
+    "src/bond_api/serialization.py": "1ffe0eaa3d427e7a96716c2eeef13b0290103ba94cf0913644112a2610e17e4b"
+  },
+  "aggregate_sha256": "2e8fa087be0431ad567cb2d99bd5474a9336ea68deb74743d8652a539dfe25bf",
+  "checker_sha256": "e7b56b3e35eed834ac1061152fb8438f976c03be50484b8345bbac46d2cebc8d"
+}

@@ -23,9 +23,9 @@ this file is the *working procedure*.
 
 ## Scope
 
-Work only inside this repository. The only sibling BOND package this repo
-depends on is `../bond-api` (a path dependency); do not edit it, or any other
-sibling package, from here. Published at
+Work only inside this repository. The BOND protocol layer it depends on is the
+recorded copy under `vendor/bond-api` (declared in `pyproject.toml`); do not
+edit it, or any sibling package, from here. Published at
 `github.com/docxology/bond-you_only_live_twice`: commit and push on `main`.
 
 ## What is frozen and what is open
