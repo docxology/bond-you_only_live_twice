@@ -29,7 +29,7 @@ dependencies = [
 # its MissionProvider. Relative path (fleet convention, as in ../bond-goldfinger):
 # the BOND packages are checked out as siblings, so this resolves on any machine.
 [tool.uv.sources]
-bond-api = { path = "../bond-api" }
+bond-api = { path = "vendor/bond-api" }
 
 [project.optional-dependencies]
 dev = [
@@ -77,6 +77,8 @@ exclude_lines = [
 # Project-local mypy settings (the monorepo root config has no mypy_path for
 # this package's src/ layout). Mirrors the BOND-API gate: strict-ish typing,
 # explicit package bases, ignore missing stubs.
+# Vendored copies are a dependency; their bytes are bound by scripts/vendor.py.
+exclude = ["(^|/)vendor/"]
 python_version = "3.12"
 mypy_path = ["src"]
 explicit_package_bases = true
@@ -90,6 +92,8 @@ warn_unused_ignores = true
 ignore_missing_imports = true
 
 [tool.ruff]
+# The vendored copies are byte-identical to upstream and must stay that way.
+extend-exclude = ["vendor"]
 line-length = 88
 target-version = "py310"
 
