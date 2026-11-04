@@ -26,8 +26,8 @@ dependencies = [
 ]
 
 # bond-api is the FROZEN BOND protocol (Layer 1). This film package implements
-# its MissionProvider. Relative path (fleet convention, as in ../bond-goldfinger):
-# the BOND packages are checked out as siblings, so this resolves on any machine.
+# its MissionProvider. The declaration resolves against the recorded copy inside
+# this repo, not a sibling checkout: `scripts/vendor.py --check` re-seals it.
 [tool.uv.sources]
 bond-api = { path = "vendor/bond-api" }
 
@@ -74,9 +74,10 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-# Project-local mypy settings (the monorepo root config has no mypy_path for
-# this package's src/ layout). Mirrors the BOND-API gate: strict-ish typing,
-# explicit package bases, ignore missing stubs.
+# This package's own mypy settings: the nearest ancestor `pyproject.toml`
+# declares no `[tool.mypy]` table and uv has no workspace here, so nothing is
+# inherited, and `mypy_path` is what lets `src/` resolve. Mirrors the BOND-API
+# gate: strict-ish typing, explicit package bases, ignore missing stubs.
 # Vendored copies are a dependency; their bytes are bound by scripts/vendor.py.
 exclude = ["(^|/)vendor/"]
 python_version = "3.12"

@@ -5,7 +5,7 @@ computation core of seven analytical capabilities (rendezvous windows, orbital
 capture, concealed-lair detection, hidden-base discovery, infiltration planning,
 TDOA emitter localization, pattern of life) behind the frozen BOND-API
 `MissionProvider` protocol. **Latest measured gate:** see the Round-2 section
-below (123 passed, 0 failed, 0 skipped, 100.00 % line+branch coverage on
+below (124 passed, 0 failed, 0 skipped, 100.00 % line+branch coverage on
 `src/`; `ruff` + `mypy` clean; `scripts/00_preflight.py` exits 0). Counts are
 not restated here — re-run the gate. The adversarial
 audit's eight findings (four SEVERE, four MODERATE) were all closed in `dd88b56`
@@ -212,16 +212,19 @@ ring.
 the relationship asserted rather than eyeballed.
 
 **E7 — Delegate provenance hashing to `bond-utilities`.**
-`scenario.scenario_input_hash` (`src/you_only_live_twice/scenario.py:590-595`)
+`scenario.scenario_input_hash` (`src/you_only_live_twice/scenario.py:612-617`)
 duplicates, byte for byte, `bond_utilities.mission_io.hash_payload`
-(canonical JSON with `sort_keys` + compact separators, then SHA-256). The sibling
-package exists at `../bond-utilities` but is
-not a dependency here — only `bond-api` is (`pyproject.toml:21,30`). *(The
+(canonical JSON with `sort_keys` + compact separators, then SHA-256).
+`bond-utilities` is not a dependency here — `bond-api` is the only one, listed
+in `dependencies` and satisfied by the recorded copy declared in
+`[tool.uv.sources]`. *(The
 previous TODO named `mission_io.record_provenance_outcome`; no such function
 exists — the real surface is `hash_payload`, `validate_record`, `save_record`.)*
-*Acceptance:* `uv add bond-utilities` as a path dependency plus the swap in
-`scenario.py`, with `scenario_input_hash()` returning the **same** digest before
-and after — capture the current value first and assert on it.
+*Acceptance:* record `bond-utilities` under `vendor/` the way `bond-api` is
+recorded (`scripts/vendor.py` refresh plus `--check`, an entry in
+`[tool.uv.sources]`, the append-only provenance test), then swap `scenario.py`,
+with `scenario_input_hash()` returning the **same** digest before and after —
+capture the current value first and assert on it.
 *Command:* `uv run python -c "from you_only_live_twice.scenario import scenario_input_hash; print(scenario_input_hash())"`
 before and after; the strings must match.
 
@@ -293,34 +296,44 @@ claims were stronger and false, and were softened to these.
 # from the repo root
 
 uv run pytest tests/ --cov=src --cov-fail-under=90
-#   → 107 passed, 0 failed, 0 skipped; TOTAL 97.97 % (line+branch); floor 90 %
+#   → 124 passed, 0 failed, 0 skipped; TOTAL 100.00 % (line+branch); floor 90 %
 
 uv run ruff check src/ scripts/ tests/
 #   → All checks passed!
 uv run ruff format --check src/ scripts/ tests/
-#   → 28 files already formatted
+#   → 33 files already formatted
 
 uv run mypy src/ scripts/
-#   → Success: no issues found in 16 source files
+#   → Success: no issues found in 17 source files
 
 uv run python scripts/00_preflight.py
 #   → 4 PASS lines, "[VOLCANO] preflight OK", exit 0
 
 rg -n "template[_]code_project" . || echo CLEAN
-#   → CLEAN (exemplar lineage must be zero)
+#   → no output, exit 1; CLEAN (exemplar lineage must be zero)
 
 git status --short
 #   → empty after commit
 ```
 
+Measured at the 2026-11-04 vendoring change, on the head that records `bond-api`
+under `vendor/`. The suite count includes `tests/test_vendor_provenance.py`; the
+formatter and `mypy` counts include `scripts/vendor.py`.
+
 Artifact regeneration (must leave the tokens and figures unchanged for an
 unchanged scenario):
 
 ```bash
-uv run python scripts/z_generate_manuscript_variables.py   # 94 tokens → output/data/
-uv run python scripts/render_figures.py                    # 6 PNGs → output/figures/
+uv run python scripts/z_generate_manuscript_variables.py   # 101 tokens → output/data/
+uv run python scripts/render_figures.py                    # 8 PNGs → output/figures/
 uv run python scripts/run_mission.py                       # full protocol run
 ```
+
+Measured 2026-11-04: two consecutive generator runs over an unchanged scenario
+produced byte-identical output (whole-`output/` digest `7d23b1f30db8be99`, the
+same value before and after the vendoring change). The token generator's
+determinism is pinned by `test_generate_variables_is_deterministic`; the PNG
+byte-identity is measured here rather than asserted by a test.
 
 Live counts are recorded under the gitignored `docs/_generated/` and regenerated
 from the gate — never hardcode them in prose. If a number above moves, the gate

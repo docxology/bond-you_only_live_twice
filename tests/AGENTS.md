@@ -25,8 +25,8 @@ checks.
 - **Determinism is checked, not assumed**: fixed seeds, and no wall-clock in a persisted artifact.
 - **The manuscript tokens are tested against the mission's own output**, so a token cannot drift from
   the value `scenario.solve_mission` produced.
-- **`test_mission.py` is the module that needs the sibling `bond-api`**; the domain modules' tests run
-  without it.
+- **`test_mission.py` is the module that needs the recorded `bond-api` copy under `vendor/`**; the
+  domain modules' tests run without it.
 - **If the suite cannot import `bond_api` under `uv run pytest`,** run it as
   `uv run python -m pytest`: a stale console script left in `.venv/bin` by an earlier interpreter
   outlives that interpreter. Gate through the interpreter.
