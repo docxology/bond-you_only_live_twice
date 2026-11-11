@@ -434,3 +434,49 @@ manuscript's `{{MISSION_INPUT_HASH}}` follows automatically.
 - The `attempts < 200_000` cap in `build_weekly_activity_schedule` is now
   covered by a termination test but is still a hard safety bound (not a
   modelling choice).
+
+## Workflowz review — 2026-11-10
+
+### Correctness
+
+**W1 — `capture_windows` can evaluate and return windows beyond the requested interval. (P1).**
+*Evidence:* `src/you_only_live_twice/orbital_capture.py:138` builds the grid as `np.arange(t_start, t_end + dt, dt)`, which can include a sample later than `t_end` when the span is not step-aligned. `src/you_only_live_twice/orbital_capture.py:164` then sets `end_s` to the last sampled time plus a full `dt`, without clipping it to `t_end`. For identical chaser/target orbits, `t_start=0`, `t_end=90`, and `dt=60`, the current arithmetic samples 0, 60, and 120 seconds and returns one window ending at 180 seconds even though the requested search ends at 90.
+*Done when:* capture searches never use samples outside `[t_start, t_end]`, and every returned `CaptureWindow` satisfies `t_start <= start_s <= end_s <= t_end`, including a non-step-aligned, always-inside capture case. The same-orbit regression above must return a window ending no later than 90 seconds rather than 180.
+*Command:* `uv run pytest tests/test_orbital_capture.py -q -k capture_requested_span` — add the regression under this name; expect the selected test to pass, with all returned window edges inside the requested span (it fails against the current arithmetic).
+*Dependencies/constraints:* No new dependency or module redesign is needed. Preserve deterministic sampling, the existing range/speed envelope, and the `CaptureWindow` shape. This is distinct from TODO E3's sub-step edge refinement: W1 fixes out-of-contract interval bounds, not step-size accuracy.
+
+**W2 — `localize_tdoa` reports the pre-step residual as the “final” residual. (P2).**
+*Evidence:* the return contract at `src/you_only_live_twice/emitter_localization.py:136-138` promises the final `residual_norm`. Residuals are evaluated at the old `x` at `src/you_only_live_twice/emitter_localization.py:144`, but `x` is advanced at `src/you_only_live_twice/emitter_localization.py:153` and the old residual norm is returned with the new estimate at `src/you_only_live_twice/emitter_localization.py:154-159`. Thus the returned diagnostic does not describe the returned estimate whenever the accepted step changes that estimate.
+*Done when:* the returned `residual_norm` is recomputed at the returned `estimate` (or an equivalent already-computed post-step residual is retained), without changing the convergence criterion or solver protocol. Add a convergent offset-start/noisy case with a deliberately loose `tol` so the accepted step materially changes `x`; independently recompute the residual through public `tdoa_measurements(sensor_positions, tuple(result["estimate"])) - deltas` and require agreement with `result["residual_norm"]`.
+*Command:* `uv run pytest tests/test_emitter_localization.py -q -k final_residual_norm` — expect the new regression to pass and to demonstrate that the reported norm is the residual of the returned estimate, not the previous iterate.
+*Dependencies/constraints:* Stdlib + numpy only, preserving the domain layer contract and deterministic solver behavior. This does not duplicate the closed non-convergence coverage item C1; W2 concerns a successful return's diagnostic value.
+
+### Verification
+
+**W3 — Preflight accepts any non-empty gadget registration instead of the frozen nine-gadget surface. (P2).**
+*Evidence:* `scripts/00_preflight.py:37` checks only `_gadget_count() > 0`, and `_gadget_count` at `scripts/00_preflight.py:51-54` returns just a count. Consequently one successful registration is enough for the preflight “gadgets register” check to pass. The public surface names exactly nine gadgets at `README.md:51-54`: `rendezvous_solver`, `intercept_budget`, `capture_solver`, `lair_detector`, `discovery_engine`, `search_ranker`, `route_planner`, `emitter_locator`, and `pattern_analyzer`.
+*Done when:* preflight compares the registered names for `you_only_live_twice` with that complete nine-name set and fails on a missing or unexpected name, rather than treating any positive count as success. The successful output must explicitly report the validated count/names, and a script-level regression must exercise this observable preflight result.
+*Command:* `uv run python scripts/00_preflight.py` — expect exit 0 and a PASS line stating that all nine expected gadgets registered; `uv run pytest tests/test_scripts_smoke.py -q -k preflight` — expect the preflight regression to pass. The validation logic must reject a one-gadget-only registration, which the current `> 0` condition accepts.
+*Dependencies/constraints:* Keep using the real `GadgetRegistry` and `register_gadgets`; do not add mock frameworks or alter the frozen provider/gadget surface. Registration ordering need not be significant.
+
+### Runtime and compatibility
+
+**W4 — Replace the floating CPython 3.15 minor pin with the exact 3.15.2 development/runtime pin. (P2).**
+*Evidence:* `.python-version:1` currently contains only `3.15`, so the selected patch release can drift. The library support declaration remains `requires-python = ">=3.11"` at `pyproject.toml:20`; that support range is separate from the repository's preferred exact development runtime.
+*Done when:* `.python-version` records exactly `3.15.2`, the existing dependency declarations are not opportunistically changed, and the package and test suite run on that exact interpreter.
+*Command:* `uv run python -c 'import sys; print(".".join(map(str, sys.version_info[:3]))); assert sys.version_info[:3] == (3, 15, 2)'` — expect output `3.15.2` and exit 0; then `uv run pytest tests/ -q` — expect the complete existing suite to pass on that interpreter.
+*Dependencies/constraints:* Preserve `requires-python = ">=3.11"`. Validate the existing locked resolution against the local `bond-api` path dependency and the declared numpy/matplotlib/PyYAML dependencies (`pyproject.toml:21-32`); do not silently upgrade or relax those dependencies. If an exact resolver error establishes that 3.15.2 cannot be used, record that constraint and leave dependency versions unchanged rather than guessing replacements.
+
+**W5 — Make Ruff and mypy analyze the declared Python 3.11 compatibility floor. (P3).**
+*Evidence:* the package declares Python `>=3.11` at `pyproject.toml:20`, but mypy is configured for `python_version = "3.12"` at `pyproject.toml:83` and Ruff for `target-version = "py310"` at `pyproject.toml:99`. Those three different language targets leave the advertised 3.11 floor without a matching static-analysis configuration; Ruff's older target can also enforce unnecessary pre-3.11 compatibility while mypy's newer target can hide 3.11 incompatibilities.
+*Done when:* Ruff uses `target-version = "py311"` and mypy uses `python_version = "3.11"`, both gates are clean without raising the package floor, and an actual Python 3.11 import exercises the declared minimum. W4's exact development runtime remains 3.15.2.
+*Command:* `uv run ruff check src/ scripts/ tests/ && uv run ruff format --check src/ scripts/ tests/ && uv run mypy src/ scripts/` — expect all checks to exit 0; `uv run --python 3.11 python -c 'from you_only_live_twice.mission import MissionProvider; print(MissionProvider().film)'` — expect `you_only_live_twice` and exit 0.
+*Dependencies/constraints:* This is a compatibility-check correction, not a language-version upgrade. Keep the existing vendored exclusions and do not introduce syntax above 3.11 or change runtime dependencies merely to satisfy the adjusted checks; resolve any newly exposed 3.11 incompatibility in package code or explicitly narrow the published support contract with separate evidence.
+
+### Documentation
+
+**W6 — Correct the figure renderer's six-figure description to its actual eight-figure behavior. (P3).**
+*Evidence:* `scripts/render_figures.py:3-5` says the script writes six PNGs and omits both emitter products from that description, while `scripts/render_figures.py:29-38` invokes eight plotting functions, including `plot_emitter_localization` and `plot_emitter_error_sweep`. `README.md:34` already describes eight deterministic PNGs, so the script docstring is the inconsistent surface.
+*Done when:* the renderer docstring states eight PNGs and includes the two emitter figures in its enumeration, matching actual execution; no generated figure bytes or plotting behavior need to change.
+*Command:* `uv run python scripts/render_figures.py` — expect exit 0 and eight `[VOLCANO] figure` records with non-zero file sizes, providing the behavioral count that the corrected docstring describes.
+*Dependencies/constraints:* Documentation-only source change. Keep figure generation deterministic and do not hand-edit generated manuscript tokens or add generated artifacts as part of this item.
