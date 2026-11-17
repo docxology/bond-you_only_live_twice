@@ -5,6 +5,30 @@ mission software in the PROJECT BOND suite: a pure, deterministic computation
 core with seven analytical capabilities, exposed to the frozen BOND-API
 `MissionProvider` protocol.
 
+## Mission model
+
+```mermaid
+flowchart TD
+    accTitle: VOLCANO implemented mission analyses
+    accDescr: Orbital elements, volcano sensor grids and activity observations feed Rendezvous windows and orbital capture/phasing; Terrain anomalies, Bayesian discovery and infiltration route; TDOA emitter localization and activity periodicity. The mission adapter returns capture windows, ranked sites, routes and emitter/activity metrics with provenance, then a debrief.
+    I["Orbital elements, volcano sensor grids and activity observations"]
+    G0["Rendezvous windows and orbital capture/phasing"]
+    I --> G0
+    G1["Terrain anomalies, Bayesian discovery and infiltration route"]
+    I --> G1
+    G2["TDOA emitter localization and activity periodicity"]
+    I --> G2
+    O["mission.py: execute returns MissionOutcome<br/>Capture windows, ranked sites, routes and emitter/activity metrics and provenance"]
+    G0 --> O
+    G1 --> O
+    G2 --> O
+    O --> F["debrief: mission summary"]
+```
+
+The branches group implemented capabilities; they do not imply a runtime order.
+
+**Source map:** [`rendezvous_windows.py`](src/you_only_live_twice/rendezvous_windows.py), [`orbital_capture.py`](src/you_only_live_twice/orbital_capture.py); [`terrain_anomaly.py`](src/you_only_live_twice/terrain_anomaly.py), [`hidden_base_discovery.py`](src/you_only_live_twice/hidden_base_discovery.py), [`infiltration_planning.py`](src/you_only_live_twice/infiltration_planning.py); [`emitter_localization.py`](src/you_only_live_twice/emitter_localization.py), [`pattern_of_life.py`](src/you_only_live_twice/pattern_of_life.py); [`mission.py`](src/you_only_live_twice/mission.py).
+
 ## Capabilities
 
 ### Film concept → software payload
