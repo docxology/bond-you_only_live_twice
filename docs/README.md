@@ -1,4 +1,6 @@
 ---
+
+[Package maintenance](package-maintenance.md) covers dependency and release records.
 title: "docs — VOLCANO documentation hub"
 type: "docs_guide"
 version: "0.2.0"
