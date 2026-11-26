@@ -1,5 +1,7 @@
 # you_only_live_twice — VOLCANO
 
+See [package maintenance](docs/package-maintenance.md) for dependency and citation records.
+
 **You Only Live Twice (1967)** · mission codename **VOLCANO**. Special-agent
 mission software in the PROJECT BOND suite: a pure, deterministic computation
 core with seven analytical capabilities, exposed to the frozen BOND-API

@@ -1,4 +1,6 @@
 ---
+
+[Package maintenance](package-maintenance.md) identifies the dependency and citation records.
 title: "docs — agent working guide for you_only_live_twice (VOLCANO)"
 type: "agent_guide"
 version: "0.2.0"
