@@ -1,6 +1,7 @@
 # you_only_live_twice — VOLCANO
 
-See [package maintenance](docs/package-maintenance.md) for dependency and citation records.
+For the distribution version, checkout Python selection, dependency sources,
+and citation records, see [package maintenance](docs/package-maintenance.md).
 
 **You Only Live Twice (1967)** · mission codename **VOLCANO**. Special-agent
 mission software in the PROJECT BOND suite: a pure, deterministic computation

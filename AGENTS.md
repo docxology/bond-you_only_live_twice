@@ -1,5 +1,8 @@
 # AGENTS.md — you_only_live_twice (VOLCANO)
 
+The [package maintenance guide](docs/package-maintenance.md) records the
+distribution identity, Python selection, dependency provenance, and citation metadata.
+
 Project rules for agents working in this package. **Scope = exactly this
 directory.** Published at `github.com/docxology/bond-you_only_live_twice`;
 commit on `main`, path-scoped (`git add -A` in this repo only).
